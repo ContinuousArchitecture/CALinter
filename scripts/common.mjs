@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Helpers compartidos para los scripts de gobernanza.
-// Mantiene la lógica repetida fuera de los validadores y del renderer.
+// Componentes compartidos para los scripts de gobernanza.
+// Mantiene fuera del engine la lectura de argumentos, el estado común y el I/O.
 export function getArg(name, fallback = '') {
   const idx = process.argv.indexOf(name);
   return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
@@ -10,6 +10,10 @@ export function getArg(name, fallback = '') {
 
 export function resolveArgPath(name, fallback) {
   return path.resolve(getArg(name, fallback));
+}
+
+export function loadJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 export function createValidationState() {
@@ -25,8 +29,8 @@ export function failValidation(state, message) {
   state.observations.push(message);
 }
 
-export function addValidationCheck(state, name, status, detail) {
-  state.checks.push(detail === undefined ? { name, status } : { name, status, detail });
+export function addValidationCheck(state, id, status, detail = undefined, message = undefined) {
+  state.checks.push({ id, status, detail, message });
 }
 
 export function computeValidationStatus(state) {

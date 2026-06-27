@@ -1,0 +1,49 @@
+{
+  "id": "repository-structure",
+  "title": "Estructura del repositorio",
+  "repositoryNamePattern": "^(SBB-(SD|AM|BS)-[0-9]{4}|BS-[0-9]{4})$",
+  "checks": [
+    {
+      "id": "readme",
+      "type": "path",
+      "path": "README.md",
+      "kind": "file",
+      "message": "El archivo README.md debe existir."
+    },
+    {
+      "id": "workflow",
+      "type": "path",
+      "path": ".github/workflows/validate.yml",
+      "kind": "file",
+      "message": "Debe existir el workflow .github/workflows/validate.yml."
+    },
+    {
+      "id": "artifact-folder",
+      "type": "path",
+      "path": "artifact",
+      "kind": "dir",
+      "message": "Debe existir la carpeta artifact/."
+    },
+    {
+      "id": "source-folder",
+      "type": "path",
+      "path": "artifact/source",
+      "kind": "dir",
+      "message": "Debe existir la carpeta artifact/source/."
+    },
+    {
+      "id": "exchange-folder",
+      "type": "path",
+      "path": "artifact/exchange",
+      "kind": "dir",
+      "message": "Debe existir la carpeta artifact/exchange/."
+    },
+    {
+      "id": "exchange-file",
+      "type": "path",
+      "path": "artifact/exchange/design.openexchange.xml",
+      "kind": "file",
+      "message": "Debe existir artifact/exchange/design.openexchange.xml."
+    }
+  ]
+}
