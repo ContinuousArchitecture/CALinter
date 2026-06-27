@@ -12,7 +12,7 @@ Es el motor declarativo. Lee un manifest YAML y ejecuta reglas sin código por v
 
 ### Archivos esperados
 
-- `rules/validators.yaml`
+- `rules/manifest.yaml`
 - `rules/archi-archimate-source.yaml`
 
 ### Tipos de reglas soportadas
