@@ -1,11 +1,6 @@
 {
   "validators": [
     {
-      "id": "repository-structure",
-      "title": "Estructura del repositorio",
-      "ruleFile": "repository-structure.json"
-    },
-    {
       "id": "archi-archimate-source",
       "title": "Fuente Archi ArchiMate",
       "ruleFile": "archi-archimate-source.json"

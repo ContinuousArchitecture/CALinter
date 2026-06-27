@@ -4,8 +4,8 @@ Repositorio central de gobernanza para activos arquitectónicos.
 
 ## Filosofía
 
-- Un motor declarativo ejecuta validaciones.
-- Los desarrolladores agregan reglas JSON, no scripts por cada regla.
+- Un motor declarativo ejecuta una regla declarativa centralizada.
+- Los desarrolladores ajustan el manifest o la regla, no scripts por cada cambio.
 - El workflow reutilizable solo orquesta el engine.
 
 ## Estructura
