@@ -1,4 +1,0 @@
-validators:
-  - id: archi-xml-serialization-rule
-    title: Regla de serialización XML Archi
-    ruleFile: archi-xml-serialization-rule.yaml

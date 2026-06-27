@@ -1,5 +1,5 @@
-# Regla: archi-xml-serialization-rule
-# Titulo: Regla de serializacion XML Archi
+# Regla: archimate-xml-source-rule
+# Titulo: Regla de serializacion de fuente XML ArchiMate
 # Autor: Equipo de Gobernanza de Arquitectura
 # Proposito:
 # - Validar que la fuente editable corresponda a un export XML de Archi.
@@ -17,10 +17,10 @@
 # - `root`: etiqueta XML raiz esperada.
 # - `text`: cadena obligatoria que debe aparecer en el archivo.
 # - `message`: texto de error mostrado al usuario.
-id: archi-xml-serialization-rule
-title: Regla de serialización XML Archi
+id: archimate-xml-source-rule
+title: Regla de serialización de fuente XML ArchiMate
 author: Equipo de Gobernanza de Arquitectura
-description: Valida una fuente editada con Archi y compatible con ArchiMate.
+description: Valida una fuente XML de Archi y su compatibilidad estructural con ArchiMate.
 checks:
   - id: source-folder
     type: path
@@ -49,7 +49,7 @@ checks:
     type: text-contains
     path: artifact/source/design.archimate
     text: xmlns:archimate="http://www.archimatetool.com/archimate"
-    message: design.archimate debe incluir el namespace de Archi.
+    message: design.archimate debe incluir el namespace de ArchiMate.
 
   - id: xsi-namespace
     type: text-contains
