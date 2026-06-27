@@ -2,6 +2,10 @@
 
 Estos scripts viven en el repo central `ci-architecture-governance` y son usados por los workflows reutilizables.
 
+## `common.mjs`
+
+Contiene helpers compartidos para leer argumentos, escribir reportes JSON y persistir texto o JSON de forma consistente.
+
 ## `validate-repository-structure.mjs`
 
 Valida que el repositorio llamador tenga la estructura mínima esperada.

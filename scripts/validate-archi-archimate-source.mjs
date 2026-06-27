@@ -1,19 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { getArg, resolveArgPath, writeJsonReport } from './common.mjs';
 
 // Valida un archivo fuente compatible con Archi y ArchiMate dentro de `artifact/source`.
 // El script exige un único archivo `design.archimate` y comprueba marcadores típicos
 // de un export de Archi antes de escribir el reporte.
-function getArg(name, fallback = '') {
-  const idx = process.argv.indexOf(name);
-  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
-}
-
 const config = {
-  sourcePath: path.resolve(getArg('--source-path', path.join(process.cwd(), 'artifact/source'))),
+  sourcePath: resolveArgPath('--source-path', path.join(process.cwd(), 'artifact/source')),
   expectedFileName: getArg('--expected-file', 'design.archimate'),
   expectedRootTag: getArg('--expected-root-tag', 'archimate:model'),
-  reportFile: path.resolve(getArg('--report-file', path.join(process.cwd(), 'archimate-source-report.json'))),
+  reportFile: resolveArgPath('--report-file', path.join(process.cwd(), 'archimate-source-report.json')),
 };
 
 const state = {
@@ -118,11 +114,14 @@ function writeReport() {
   };
 
   // Escribe el reporte en disco; el workflow lo lee y lo publica como salida.
-  fs.mkdirSync(path.dirname(config.reportFile), { recursive: true });
-  fs.writeFileSync(config.reportFile, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeJsonReport(config.reportFile, report);
   process.stdout.write(`${state.status}\n`);
 }
 
-validateSourceFolder();
-finalizeChecks();
-writeReport();
+function main() {
+  validateSourceFolder();
+  finalizeChecks();
+  writeReport();
+}
+
+main();

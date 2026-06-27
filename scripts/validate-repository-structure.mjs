@@ -1,18 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { getArg, resolveArgPath, writeJsonReport } from './common.mjs';
 
 // Valida la estructura base esperada para un activo arquitectónico gobernado.
 // Comprueba el nombre del repositorio y el layout mínimo de carpetas/archivos,
 // y luego escribe un reporte JSON para que el workflow lo consuma.
-function getArg(name, fallback = '') {
-  const idx = process.argv.indexOf(name);
-  return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
-}
-
-const repoRoot = path.resolve(getArg('--repo-root', process.cwd()));
+const repoRoot = resolveArgPath('--repo-root', process.cwd());
 const repoName = path.basename(repoRoot);
 const repositoryNamePattern = getArg('--repository-name-pattern', '^(SBB-(SD|AM|BS)-[0-9]{4}|BS-[0-9]{4})$');
-const reportFile = path.resolve(getArg('--report-file', path.join(process.cwd(), 'repository-structure-report.json')));
+const reportFile = resolveArgPath('--report-file', path.join(process.cwd(), 'repository-structure-report.json'));
 
 const requiredPaths = [
   ['README.md', 'file'],
@@ -53,6 +49,5 @@ const report = {
 };
 
 // Persiste el reporte JSON para que el workflow lo exponga como salida.
-fs.mkdirSync(path.dirname(reportFile), { recursive: true });
-fs.writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+writeJsonReport(reportFile, report);
 process.stdout.write(`${status}\n`);
