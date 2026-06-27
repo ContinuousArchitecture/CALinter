@@ -20,7 +20,7 @@ let status = 'PASS';
 // La carpeta fuente debe existir antes de validar archivos.
 if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isDirectory()) {
   status = 'FAIL';
-  observations.push(`Source folder '${sourcePath}' is missing or not a directory.`);
+  observations.push(`La carpeta fuente '${sourcePath}' no existe o no es un directorio.`);
 } else {
   // Solo se permite un archivo visible: `design.archimate`.
   const visibleEntries = fs.readdirSync(sourcePath, { withFileTypes: true })
@@ -35,7 +35,7 @@ if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isDirectory()) {
 
   if (!exactMatch) {
     status = 'FAIL';
-    observations.push(`Expected only '${expectedFile}' under '${sourcePath}', found: ${JSON.stringify(visibleEntries.map((entry) => entry.name))}.`);
+    observations.push(`Se esperaba solo '${expectedFile}' dentro de '${sourcePath}', pero se encontró: ${JSON.stringify(visibleEntries.map((entry) => entry.name))}.`);
   } else {
     // Verifica el contenido sin introducir una dependencia XML pesada.
     const text = fs.readFileSync(expectedFile, 'utf8');
@@ -47,19 +47,19 @@ if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isDirectory()) {
 
     if (!text.trim()) {
       status = 'FAIL';
-      observations.push(`'${expectedFile}' is empty.`);
+      observations.push(`'${expectedFile}' está vacío.`);
     } else if (openTag !== 'archimate:model') {
       status = 'FAIL';
-      observations.push(`'${expectedFile}' does not have an ArchiMate model root element.`);
+      observations.push(`'${expectedFile}' no tiene un elemento raíz de modelo ArchiMate.`);
     } else if (!hasArchimateNamespace || !/\bmodel\b/i.test(openTag)) {
       status = 'FAIL';
-      observations.push(`'${expectedFile}' is missing the ArchiMate namespace or model root attributes.`);
+      observations.push(`'${expectedFile}' no tiene el namespace de ArchiMate o los atributos base del modelo.`);
     } else if (!hasClosingTag) {
       status = 'FAIL';
-      observations.push(`'${expectedFile}' is missing the closing ArchiMate model tag.`);
+      observations.push(`'${expectedFile}' no tiene la etiqueta de cierre del modelo ArchiMate.`);
     } else {
       checks.push({ name: 'archimate_model_root', status: 'PASS', detail: openTag });
-      checks.push({ name: 'archimate_namespace', status: 'PASS', detail: hasArchimateNamespace ? 'present' : 'missing' });
+      checks.push({ name: 'archimate_namespace', status: 'PASS', detail: hasArchimateNamespace ? 'presente' : 'ausente' });
     }
   }
 }

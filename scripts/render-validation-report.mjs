@@ -12,7 +12,7 @@ const lines = [];
 lines.push('| Check | Status |');
 lines.push('|---|---|');
 lines.push(`| Repository structure | \`${structureReport.status ?? 'UNKNOWN'}\` |`);
-lines.push(`| Archimate source | \`${sourceReport.status ?? 'UNKNOWN'}\` |`);
+lines.push(`| Fuente ArchiMate | \`${sourceReport.status ?? 'UNKNOWN'}\` |`);
 lines.push('');
 lines.push(`- Structure: \`${structureReport.status ?? 'UNKNOWN'}\``);
 for (const item of structureReport.observations ?? []) {
