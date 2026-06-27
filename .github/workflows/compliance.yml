@@ -1,4 +1,4 @@
-name: Reglas de Cumplimiento Globales
+name: Continuous Architecture Compliance
 
 on:
   workflow_call:

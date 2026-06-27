@@ -1,5 +1,5 @@
 {
-  "name": "ci-architecture-governance",
+  "name": "continuous-architecture-linter",
   "private": true,
   "type": "module",
   "scripts": {
