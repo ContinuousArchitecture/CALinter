@@ -17,9 +17,10 @@ Valida que el repositorio llamador tenga la estructura mínima esperada.
 - Imprime `PASS` o `FAIL` por stdout.
 - Escribe un JSON con `name`, `status`, `checks` y `observations`.
 
-## `validate-archimate-source.mjs`
+## `validate-archi-archimate-source.mjs`
 
-Valida que `artifact/source` contenga exactamente `design.archimate` y que el archivo parezca un modelo ArchiMate XML.
+Valida que `artifact/source` contenga exactamente `design.archimate` y que el archivo parezca un export de Archi compatible con ArchiMate.
+No demuestra de forma absoluta el editor de origen; valida marcadores y estructura típicos de Archi.
 
 ### Entrada
 

@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Valida el modelo fuente esperado dentro de `artifact/source`.
-// El script exige un único archivo `design.archimate` y comprueba que el
-// contenido parezca un modelo XML de ArchiMate antes de escribir el reporte.
+// Valida un archivo fuente compatible con Archi y ArchiMate dentro de `artifact/source`.
+// El script exige un único archivo `design.archimate` y comprueba marcadores típicos
+// de un export de Archi antes de escribir el reporte.
 function getArg(name, fallback = '') {
   const idx = process.argv.indexOf(name);
   return idx >= 0 && process.argv[idx + 1] ? process.argv[idx + 1] : fallback;
