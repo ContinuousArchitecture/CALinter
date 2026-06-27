@@ -8,6 +8,13 @@ on:
         required: false
         type: string
         default: "^(SBB-(SD|AM|BS)-[0-9]{4}|BS-[0-9]{4})$"
+    outputs:
+      status:
+        description: Validation status.
+        value: ${{ jobs.validate.outputs.status }}
+      report:
+        description: Validation report as JSON.
+        value: ${{ jobs.validate.outputs.report }}
 
 jobs:
   validate:
@@ -15,18 +22,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      status: ${{ steps.validate.outputs.status }}
+      report: ${{ steps.validate.outputs.report }}
 
     steps:
       - name: Checkout caller repository
         uses: actions/checkout@v4
 
-      - name: Validate repository structure
+      - id: validate
+        name: Validate repository structure
         shell: bash
         run: |
           python - <<'PY'
+          import json
           import os
           import re
-          import sys
           from pathlib import Path
 
           repo_name = os.environ["GITHUB_REPOSITORY"].split("/")[-1]
@@ -43,43 +54,35 @@ jobs:
           ]
 
           observations = []
-          fail = False
 
           repo_ok = re.fullmatch(repository_name_pattern, repo_name) is not None
           if not repo_ok:
-              fail = True
               observations.append(f"Repository name '{repo_name}' does not match '{repository_name_pattern}'.")
 
-          for relative_path, expected_kind in required_paths:
-              path = Path(relative_path)
-              exists = path.exists()
-              kind_ok = path.is_file() if expected_kind == "file" else path.is_dir()
-              if not (exists and kind_ok):
-                  fail = True
-                  observations.append(f"Expected {expected_kind} '{relative_path}' is missing or invalid.")
-
-          summary_path = Path(os.environ.get("GITHUB_STEP_SUMMARY", "/tmp/step-summary.md"))
-          lines = []
-          lines.append("| Check | Status |")
-          lines.append("|---|---|")
-          lines.append(f"| Repository name | `{'PASS' if repo_ok else 'FAIL'}` |")
+          checks = []
           for relative_path, expected_kind in required_paths:
               path = Path(relative_path)
               exists = path.exists()
               kind_ok = path.is_file() if expected_kind == "file" else path.is_dir()
               status = "PASS" if exists and kind_ok else "FAIL"
-              lines.append(f"| `{relative_path}` | `{status}` |")
-          lines.append("")
-          lines.append(f"- Repository: `{repo_name}`")
-          lines.append(f"- Overall: `{ 'FAIL' if fail else 'PASS' }`")
-          if observations:
-              lines.append("- Observations:")
-              for item in observations:
-                  lines.append(f"  - {item}")
-          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+              checks.append({"path": relative_path, "kind": expected_kind, "status": status})
+              if not (exists and kind_ok):
+                  observations.append(f"Expected {expected_kind} '{relative_path}' is missing or invalid.")
 
-          if fail:
-              sys.exit(1)
+          status = "PASS" if repo_ok and all(item["status"] == "PASS" for item in checks) else "FAIL"
+          report = {
+              "name": repo_name,
+              "status": status,
+              "checks": [{"name": "repository_name", "status": "PASS" if repo_ok else "FAIL"}] + checks,
+              "observations": observations,
+          }
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          with output_path.open("a", encoding="utf-8") as fh:
+              fh.write(f"status={status}\n")
+              fh.write("report<<EOF\n")
+              fh.write(json.dumps(report, indent=2))
+              fh.write("\nEOF\n")
           PY
         env:
           REPOSITORY_NAME_PATTERN: ${{ inputs.repository_name_pattern }}

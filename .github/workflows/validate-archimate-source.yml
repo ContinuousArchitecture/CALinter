@@ -8,6 +8,13 @@ on:
         required: false
         type: string
         default: "artifact/source"
+    outputs:
+      status:
+        description: Validation status.
+        value: ${{ jobs.validate.outputs.status }}
+      report:
+        description: Validation report as JSON.
+        value: ${{ jobs.validate.outputs.report }}
 
 jobs:
   validate:
@@ -15,17 +22,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      status: ${{ steps.validate.outputs.status }}
+      report: ${{ steps.validate.outputs.report }}
 
     steps:
       - name: Checkout caller repository
         uses: actions/checkout@v4
 
-      - name: Validate source document
+      - id: validate
+        name: Validate source document
         shell: bash
         run: |
           python - <<'PY'
+          import json
           import os
-          import sys
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
@@ -41,13 +52,25 @@ jobs:
               return "archimate" in text.lower()
 
           if not source_path.exists() or not source_path.is_dir():
-              print(f"Source folder '{source_path}' is missing or not a directory.")
-              sys.exit(1)
+              report = {"path": str(source_path), "status": "FAIL", "checks": [], "observations": [f"Source folder '{source_path}' is missing or not a directory."]}
+              output_path = Path(os.environ["GITHUB_OUTPUT"])
+              with output_path.open("a", encoding="utf-8") as fh:
+                  fh.write("status=FAIL\n")
+                  fh.write("report<<EOF\n")
+                  fh.write(json.dumps(report, indent=2))
+                  fh.write("\nEOF\n")
+              raise SystemExit(0)
 
           visible_files = sorted([p for p in source_path.rglob("*") if p.is_file() and not any(part.startswith(".") for part in p.parts)])
           if visible_files != [expected_file]:
-              print(f"Expected only '{expected_file}' under '{source_path}', found: {[str(p) for p in visible_files]}.")
-              sys.exit(1)
+              report = {"path": str(source_path), "status": "FAIL", "checks": [], "observations": [f"Expected only '{expected_file}' under '{source_path}', found: {[str(p) for p in visible_files]}."]}
+              output_path = Path(os.environ["GITHUB_OUTPUT"])
+              with output_path.open("a", encoding="utf-8") as fh:
+                  fh.write("status=FAIL\n")
+                  fh.write("report<<EOF\n")
+                  fh.write(json.dumps(report, indent=2))
+                  fh.write("\nEOF\n")
+              raise SystemExit(0)
 
           fail = False
           observations = []
@@ -70,25 +93,19 @@ jobs:
                   fail = True
                   observations.append(f"XML parse failed for '{expected_file}': {exc}.")
 
-          summary_path = Path(os.environ.get("GITHUB_STEP_SUMMARY", "/tmp/step-summary.md"))
-          lines = []
-          lines.append("| File | Status |")
-          lines.append("|---|---|")
-          status = "PASS" if not fail else "FAIL"
-          lines.append(f"| `{expected_file.as_posix()}` | `{status}` |")
-          lines.append("")
-          lines.append(f"- Source folder: `{source_path}`")
-          lines.append(f"- Overall: `{ 'FAIL' if fail else 'PASS' }`")
-          if visible_files != [expected_file]:
-              lines.append(f"- Observations: expected exactly one file named `design.archimate`.")
-          if observations:
-              lines.append("- Details:")
-              for item in observations:
-                  lines.append(f"  - {item}")
-          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          report = {
+              "path": str(source_path),
+              "status": "FAIL" if fail else "PASS",
+              "checks": [{"name": "design_archimate", "status": "FAIL" if fail else "PASS"}],
+              "observations": observations,
+          }
 
-          if fail:
-              sys.exit(1)
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          with output_path.open("a", encoding="utf-8") as fh:
+              fh.write(f"status={'FAIL' if fail else 'PASS'}\n")
+              fh.write("report<<EOF\n")
+              fh.write(json.dumps(report, indent=2))
+              fh.write("\nEOF\n")
           PY
         env:
           SOURCE_PATH: ${{ inputs.source_path }}
