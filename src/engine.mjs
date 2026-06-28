@@ -90,13 +90,7 @@ export const Engine = {
 
   renderSummary(response) {
     const lines = [];
-    lines.push('| DSL | Estado |');
-    lines.push('|---|---|');
-
-    for (const validator of response.validators ?? []) {
-      lines.push(`| ${validator.title ?? validator.id ?? 'Sin título'} | \`${validator.status ?? 'UNKNOWN'}\` |`);
-    }
-
+    lines.push('## Validation Report');
     lines.push('');
     lines.push(`- Estado global: \`${response.status ?? 'UNKNOWN'}\``);
     lines.push(`- Estado del sistema: \`${response.systemStatus ?? 'UNKNOWN'}\``);
@@ -111,20 +105,16 @@ export const Engine = {
     for (const validator of response.validators ?? []) {
       lines.push('');
       lines.push(`### ${validator.title ?? validator.id ?? 'DSL'}`);
-      lines.push(`- Tipo: \`${validator.dslType ?? 'UNKNOWN'}\``);
+      if (validator.description) {
+        lines.push(validator.description);
+      }
       lines.push(`- Estado: \`${validator.status ?? 'UNKNOWN'}\``);
-      if (validator.file) {
-        lines.push(`- Archivo: \`${validator.file}\``);
-      }
-      if (validator.purpose) {
-        lines.push(`- Propósito: ${validator.purpose}`);
-      }
 
       for (const [group, checks] of Object.entries(groupChecks(validator.checks ?? []))) {
         lines.push(`#### ${group}`);
         for (const check of checks) {
           const detail = check.detail === undefined ? '' : ` (${check.detail})`;
-          lines.push(`- ${check.id}: ${check.description ? `${check.description} ` : ''}\`${check.status}\`${detail}`);
+          lines.push(`- \`${check.status}\` ${check.id}${check.description ? ` - ${check.description}` : ''}${detail}`);
         }
       }
 
