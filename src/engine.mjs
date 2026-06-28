@@ -93,6 +93,7 @@ export const Engine = {
     const validators = response.validators ?? [];
     const allChecks = validators.flatMap((validator) => (validator.checks ?? []).map((check) => ({ validator, check })));
     const actionable = allChecks.filter(({ check }) => check.status !== 'PASS');
+    const passedChecks = allChecks.filter(({ check }) => check.status === 'PASS');
     const ruleChecks = allChecks.map(({ check }) => check);
     const stats = collectStats(validators, allChecks);
     const status = response.lintStatus ?? response.status ?? 'UNKNOWN';
@@ -101,71 +102,88 @@ export const Engine = {
       ? toRelativePath(response.repoRoot, response.artifact.current)
       : (response.artifact?.source?.path ?? 'Unknown');
     const globalScore = response.systemStatus === 'ERROR' ? null : calculateComplianceScore(ruleChecks);
-    const dslSummaries = validators.map((validator) => ({
-      validator,
-      counts: countChecks(validator.checks ?? []),
-      score: calculateComplianceScore(validator.checks ?? []),
-    }));
-    const headline = response.systemStatus === 'ERROR'
-      ? `${statusEmoji('ERROR')} No evaluable`
-      : `${statusEmoji(status)} Cumplimiento: ${formatScore(globalScore)} — ${decisionFromLintStatus(status)}`;
+    const noteLines = [
+      `**Cumplimiento:** ${globalScore === null ? 'No evaluable' : formatScore(globalScore)}`,
+      `**Resultado:** ${decisionFromLintStatus(status)}`,
+      `**Merge permitido:** ${isMergeAllowed(status) ? 'Sí' : 'No'}`,
+      `**Errores bloqueantes:** \`${stats.failures}\``,
+      `**Advertencias:** \`${stats.warnings}\``,
+      `**Archivo evaluado:** \`${escapeTableCell(artifactPath)}\``,
+    ];
 
     lines.push('# Architecture Compliance Report');
     lines.push('');
-    lines.push(`## ${headline}`);
+    lines.push('> [!NOTE]');
+    for (const item of noteLines) {
+      lines.push(`> ${item}`);
+    }
     lines.push('');
 
     if (status === 'WARN') {
       lines.push('> [!WARNING]');
-      lines.push(`> ${executive.summaryLine}`);
-    } else if (status === 'PASS') {
-      lines.push('> [!NOTE]');
-      lines.push(`> ${executive.summaryLine}`);
+      lines.push(`> **Regla no cumplida:** ${escapeTableCell(actionable[0]?.check.id ?? 'N/A')}`);
+      lines.push(`> **Ubicación:** ${escapeTableCell(actionable[0]?.check.group ?? 'General')}`);
+      lines.push(`> **Elemento:** ${escapeTableCell(actionable[0]?.check.detail ?? actionable[0]?.check.message ?? 'N/A')}`);
+      lines.push(`> **Problema:** ${escapeTableCell(actionable[0]?.check.message ?? actionable[0]?.check.detail ?? 'Revisar el hallazgo reportado.')}`);
+      lines.push(`> **Recomendación:** ${escapeTableCell(suggestAction(actionable[0]?.check ?? {}))}`);
+      lines.push('');
     } else if (status === 'FAIL') {
       lines.push('> [!CAUTION]');
       lines.push(`> ${executive.summaryLine}`);
+      lines.push('');
     } else if (response.systemStatus === 'ERROR') {
-      lines.push(`> ⚫ ${executive.summaryLine}`);
+      lines.push('> [!CAUTION]');
+      lines.push(`> ${executive.summaryLine}`);
+      lines.push('');
     }
 
-    lines.push('');
-    lines.push('| Decisión | Merge permitido | Errores | Advertencias | Archivo |');
-    lines.push('|---|---:|---:|---:|---|');
-    lines.push(`| ${decisionFromLintStatus(status)} | ${isMergeAllowed(status) ? 'Sí' : 'No'} | \`${stats.failures}\` | \`${stats.warnings}\` | \`${escapeTableCell(artifactPath)}\` |`);
-
-    lines.push('');
-    lines.push('## Acción requerida');
+    lines.push('## Reglas no cumplidas');
     if (response.systemStatus === 'ERROR') {
       lines.push('');
       lines.push(`No se pudo evaluar el diseño: ${response.error ?? 'error técnico'}.`);
     } else if (actionable.length === 0) {
       lines.push('');
-      lines.push('No hay acciones requeridas.');
+      lines.push('No hay reglas no cumplidas.');
     } else {
       lines.push('');
-      lines.push('| Estado | Ubicación | Elemento | Corrección |');
+      lines.push('| Estado | Regla | Ubicación | Recomendación |');
       lines.push('|---|---|---|---|');
       for (const { check } of actionable) {
         const location = check.group ?? 'General';
-        const element = escapeTableCell(check.detail ?? check.message ?? '');
         const suggestion = escapeTableCell(suggestAction(check));
-        lines.push(`| ${statusVisual(check.status)} | ${escapeTableCell(location)} | ${element} | ${suggestion} |`);
+        lines.push(`| ${statusVisual(check.status)} | ${escapeTableCell(check.id)} | ${escapeTableCell(location)} | ${suggestion} |`);
       }
     }
 
     lines.push('');
-    lines.push('## Resumen por DSL');
+    lines.push('<details>');
+    lines.push('<summary>Reglas cumplidas</summary>');
     lines.push('');
-    lines.push('| DSL | Estado | Score | PASS | WARN | FAIL |');
-    lines.push('|---|---|---:|---:|---:|---:|');
-    for (const { validator, counts, score } of dslSummaries) {
-      lines.push(`| ${escapeTableCell(validator.title ?? validator.id ?? 'DSL')} | ${statusVisual(validator.status ?? 'UNKNOWN')} | ${formatScore(score)} | \`${counts.PASS}\` | \`${counts.WARN}\` | \`${counts.FAIL}\` |`);
+    lines.push('### Evidencia positiva');
+    lines.push('');
+
+    for (const validator of validators) {
+      const counts = countChecks(validator.checks ?? []);
+      const passed = (validator.checks ?? []).filter((check) => check.status === 'PASS');
+      if (passed.length === 0) {
+        continue;
+      }
+
+      lines.push(`#### ${validator.title ?? validator.id ?? 'DSL'}`);
+      if (validator.description) {
+        lines.push(validator.description);
+      }
+      lines.push('');
+      lines.push(`**Estado:** ${statusVisual(validator.status ?? 'UNKNOWN')} | **Reglas OK:** ${counts.PASS}/${counts.PASS + counts.WARN + counts.FAIL + counts.ERROR}`);
+      lines.push('');
+      lines.push('| Estado | Regla | Evidencia |');
+      lines.push('|---|---|---|');
+      for (const check of passed) {
+        lines.push(`| ${statusVisual(check.status ?? 'UNKNOWN')} | ${escapeTableCell(check.id)} | ${escapeTableCell(check.detail ?? 'OK')} |`);
+      }
+      lines.push('');
     }
 
-    lines.push('');
-    lines.push('<details>');
-    lines.push('<summary>Ver evidencia técnica completa</summary>');
-    lines.push('');
     lines.push('### Información de ejecución');
     lines.push('');
     lines.push('| Indicador | Valor |');
@@ -180,35 +198,6 @@ export const Engine = {
     lines.push('');
     lines.push('> Las advertencias de plataforma o runner se muestran separadas del resultado de compliance.');
     lines.push('');
-
-    for (const validator of validators) {
-      const counts = countChecks(validator.checks ?? []);
-      const total = counts.PASS + counts.WARN + counts.FAIL + counts.ERROR;
-      lines.push(`### ${validator.title ?? validator.id ?? 'DSL'}`);
-      if (validator.description) {
-        lines.push(validator.description);
-      }
-      lines.push('');
-      lines.push(`**Estado:** ${statusVisual(validator.status ?? 'UNKNOWN')} | **Score:** ${formatScore(calculateComplianceScore(validator.checks ?? []))} | **Reglas OK:** ${counts.PASS}/${total}`);
-      lines.push('');
-      lines.push('| Grupo | Regla | Estado | Detalle |');
-      lines.push('|---|---|---|---|');
-      for (const [group, checks] of Object.entries(groupChecks(validator.checks ?? []))) {
-        for (const check of checks) {
-          const detail = check.detail === undefined ? '' : String(check.detail);
-          lines.push(`| ${escapeTableCell(group)} | ${escapeTableCell(check.id)} | ${statusVisual(check.status ?? 'UNKNOWN')} | ${escapeTableCell(detail)} |`);
-        }
-      }
-      lines.push('');
-      if (validator.observations?.length > 0) {
-        lines.push('Observaciones:');
-        for (const item of validator.observations) {
-          lines.push(`- ${item}`);
-        }
-        lines.push('');
-      }
-    }
-
     lines.push('</details>');
 
     return `${lines.join('\n')}\n`;
