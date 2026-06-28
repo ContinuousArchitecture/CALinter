@@ -1,86 +1,71 @@
 # CALinter
 
-Repositorio del linter `CALinter`.
+[English](README.md) | [Español](README.es.md)
 
-Este proyecto centraliza las reglas de cumplimiento para modelos ArchiMate exportados desde Archi y expone un reusable workflow de cumplimiento. Cada repositorio de diseño debe hacer fork de este repositorio en su propia organización y consumir el workflow reutilizable desde ahí.
+CALinter is a reusable governance linter for ArchiMate design repositories.
 
-## Cómo usarlo
+It helps teams enforce modeling conventions and structural compliance early in the delivery flow. The linter is designed to be consumed through GitHub Actions and kept close to the design repository it validates.
 
-1. Hacer fork de este repositorio en tu organización.
-2. Crear o adaptar el repositorio de diseño con el scaffolding esperado.
-3. Referenciar el reusable workflow desde el repo de diseño.
-4. Ejecutar el workflow en `push` o `pull_request`.
+## Why CALinter
 
-## Scaffolding esperado del repo de diseño
+- Detects modeling issues before they reach reviewers or downstream consumers.
+- Keeps governance rules centralized and reusable.
+- Supports a clear contract between the governance repo and design repos.
+- Produces machine-readable validation output and a human-readable summary.
 
-El repositorio de diseño debe exponer esta estructura mínima:
+## Supported Model Formats
 
-```text
-.
-├─ artifact/
-│  ├─ source/
-│  │  └─ design.archimate
-│  └─ exchange/
-│     └─ design.openexchange.xml
-└─ .github/
-   └─ workflows/
-      └─ ci.yml
-```
+CALinter currently supports ArchiMate models exported from Archi in XML form:
 
-## Ejemplo de workflow del repo de diseño
+- `artifact/source/design.archimate`
+- `artifact/exchange/design.openexchange.xml`
+
+## Adoption
+
+To adopt this approach, fork both repositories into your organization:
+
+1. CALinter: `https://github.com/ContinuousArchitecture/CALinter/fork`
+2. Example solution building block: `https://github.com/ContinuousArchitecture/sbb-9999-example/fork`
+
+Use the forked `sbb-9999-example` repository as the starting point for your design repository.
+
+## Rule Authoring
+
+Rules are defined as YAML files under `rules/` and are listed in `rules/manifest.yaml`.
+
+Each rule set describes:
+
+- `schemaVersion`: rule contract version.
+- `tool`: the modeling tool.
+- `format`: input format.
+- `dialect`: modeling dialect.
+- `target`: the expected file or location.
+- `checks`: the validations to execute.
+
+Typical check types include:
+
+- `path`
+- `single-visible-file`
+- `file-not-empty`
+- `xml-root`
+- `text-contains`
+- `xml-name-regex`
+- `xml-name-not-contains`
+
+## Rule Example
 
 ```yaml
-name: Continuous Architecture CI
-
-on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "artifact/**"
-      - ".github/workflows/**"
-
-  push:
-    branches:
-      - main
-    paths:
-      - "artifact/**"
-      - ".github/workflows/**"
-
-jobs:
-  execute_rules:
-    name: Validar cumplimiento
-    uses: ContinuousArchitecture/CALinter/.github/workflows/compliance.yml@main
-```
-
-## Reglas actuales
-
-- `archi-consistency-rule`: consistencia e integridad básica del archivo `.archimate`.
-- `archi-style-rule`: convención de nombres y estilo para elementos y vistas.
-
-## Qué incluye el repositorio
-
-- `src/engine.mjs`: orquestador del motor.
-- `src/checks/`: estrategias de validación por tipo de regla.
-- `src/core/`: schemas y registro declarativo de reglas.
-- `src/infra/`: utilidades de FS, YAML, XML y argumentos.
-- `rules/`: manifiesto y reglas YAML.
-- `.github/workflows/compliance.yml`: reusable workflow de cumplimiento.
-
-## Requisitos
-
-- Node.js 20 o superior.
-- `npm`.
-
-## Uso local
-
-```bash
-npm ci
-npm run validate
-```
-
-O directamente:
-
-```bash
-node src/engine.mjs --mode validate --repo-root . --manifest rules/manifest.yaml
+schemaVersion: 1
+title: Example rule
+tool: archi
+format: xml
+dialect: archimate
+target:
+  path: artifact/source/design.archimate
+  mode: single-file
+checks:
+  - id: archimate-root
+    type: xml-root
+    path: artifact/source/design.archimate
+    root: archimate:model
 ```
