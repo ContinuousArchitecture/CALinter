@@ -96,6 +96,7 @@ export const Engine = {
     const stats = collectStats(validators, allChecks);
     const executive = buildExecutiveSummary(response, stats, validators, allChecks);
     const decision = decisionFromLintStatus(response.lintStatus ?? response.status ?? 'UNKNOWN');
+    const artifactPath = response.artifact?.current ?? response.artifact?.source?.path ?? 'Unknown';
 
     lines.push('# Architecture Compliance Report');
     lines.push('');
@@ -108,13 +109,10 @@ export const Engine = {
     lines.push(`| ¿Puedo continuar? | ${isMergeAllowed(response.lintStatus ?? response.status ?? 'UNKNOWN') ? 'Sí' : 'No'} |`);
     lines.push(`| ¿Es bloqueante? | ${stats.failures > 0 ? 'Sí' : 'No'} |`);
     lines.push(`| ¿Qué debo corregir? | ${escapeTableCell(executive.actionRequired)} |`);
-    lines.push(`| ¿Dónde está el problema? | ${escapeTableCell(executive.problemLocation)} |`);
     lines.push(`| Errores bloqueantes | \`${stats.failures}\` |`);
     lines.push(`| Advertencias | \`${stats.warnings}\` |`);
-    lines.push(`| DSLs ejecutados | \`${validators.length}\` |`);
-    lines.push(`| Reglas ejecutadas | \`${allChecks.length}\` |`);
     if (response.artifact?.source?.path) {
-      lines.push(`| Archivo evaluado | \`${escapeTableCell(response.artifact.source.path)}\` |`);
+      lines.push(`| Archivo evaluado | \`${escapeTableCell(artifactPath)}\` |`);
     }
 
     if (response.systemStatus === 'ERROR') {
@@ -135,26 +133,48 @@ export const Engine = {
       lines.push('No hay hallazgos que requieran atención.');
     } else {
       lines.push('');
-      lines.push('| Severidad | DSL | Regla | Ubicación | Elemento | Acción sugerida |');
-      lines.push('|---|---|---|---|---|---|');
       for (const { validator, check } of actionable) {
         const location = check.group ?? 'General';
         const element = escapeTableCell(check.detail ?? check.message ?? '');
         const suggestion = escapeTableCell(suggestAction(check));
-        lines.push(`| ${statusBadge(check.status)} | ${escapeTableCell(validator.title ?? validator.id ?? 'DSL')} | ${escapeTableCell(check.id)} | ${escapeTableCell(location)} | ${element} | ${suggestion} |`);
+        lines.push(`### ${statusBadge(check.status)} ${escapeTableCell(check.id)}`);
+        lines.push('');
+        lines.push('| Campo | Valor |');
+        lines.push('|---|---|');
+        lines.push(`| DSL | ${escapeTableCell(validator.title ?? validator.id ?? 'DSL')} |`);
+        lines.push(`| Ubicación | ${escapeTableCell(location)} |`);
+        lines.push(`| Elemento | ${element} |`);
+        lines.push(`| Problema | ${escapeTableCell(check.message ?? check.detail ?? 'Revisar el hallazgo reportado.')} |`);
+        lines.push(`| Acción sugerida | ${suggestion} |`);
+        lines.push('');
       }
     }
 
     lines.push('');
     lines.push('## Resumen por DSL');
     lines.push('');
-    lines.push('| DSL | Estado | Reglas OK | Advertencias | Errores |');
-    lines.push('|---|---|---:|---:|---:|');
+    lines.push('| DSL | Estado | Reglas | PASS | WARN | FAIL |');
+    lines.push('|---|---|---:|---:|---:|---:|');
     for (const validator of validators) {
       const counts = countChecks(validator.checks ?? []);
-      lines.push(`| ${escapeTableCell(validator.title ?? validator.id ?? 'DSL')} | ${statusBadge(validator.status ?? 'UNKNOWN')} | \`${counts.PASS}\` | \`${counts.WARN}\` | \`${counts.FAIL}\` |`);
+      const total = counts.PASS + counts.WARN + counts.FAIL + counts.ERROR;
+      lines.push(`| ${escapeTableCell(validator.title ?? validator.id ?? 'DSL')} | ${statusBadge(validator.status ?? 'UNKNOWN')} | \`${total}\` | \`${counts.PASS}\` | \`${counts.WARN}\` | \`${counts.FAIL}\` |`);
     }
 
+    lines.push('');
+    lines.push('## Información de ejecución');
+    lines.push('');
+    lines.push('| Indicador | Valor |');
+    lines.push('|---|---|');
+    lines.push(`| Estado técnico | ${statusBadge(response.systemStatus ?? 'UNKNOWN')} |`);
+    lines.push(`| Manifiesto | \`${escapeTableCell(response.manifest ?? '')}\` |`);
+    lines.push(`| Archivo fuente | \`${escapeTableCell(response.artifact?.source?.path ?? 'Unknown')}\` |`);
+    lines.push(`| Artefacto evaluado | \`${escapeTableCell(artifactPath)}\` |`);
+    lines.push(`| Motor | \`${Engine.version}\` |`);
+    lines.push(`| DSLs ejecutados | \`${validators.length}\` |`);
+    lines.push(`| Reglas ejecutadas | \`${allChecks.length}\` |`);
+    lines.push('');
+    lines.push('> Las advertencias de plataforma o runner se muestran separadas del resultado de compliance.');
     lines.push('');
     lines.push('<details>');
     lines.push('<summary>Evidencia técnica completa</summary>');
@@ -189,19 +209,6 @@ export const Engine = {
 
     lines.push('</details>');
 
-    lines.push('');
-    lines.push('## Información de ejecución');
-    lines.push('');
-    lines.push('| Indicador | Valor |');
-    lines.push('|---|---|');
-    lines.push(`| Estado técnico | ${statusBadge(response.systemStatus ?? 'UNKNOWN')} |`);
-    lines.push(`| Manifiesto | \`${escapeTableCell(response.manifest ?? '')}\` |`);
-    if (response.artifact?.current) {
-      lines.push(`| Artefacto resuelto | \`${escapeTableCell(response.artifact.current)}\` |`);
-    }
-    lines.push(`| Motor | \`${Engine.version}\` |`);
-    lines.push('| Nota | Las advertencias de plataforma o runner se muestran separadas del resultado de compliance. |');
-
     return `${lines.join('\n')}\n`;
   },
 };
@@ -217,17 +224,14 @@ function buildExecutiveSummary(response, stats, validators, allChecks) {
   if (response.systemStatus === 'ERROR') {
     return {
       actionRequired: 'Resolver el error técnico del motor',
-      problemLocation: 'Motor / pipeline',
       summaryLine: 'No se pudo evaluar el diseño por un error técnico.',
     };
   }
 
   if (response.lintStatus === 'FAIL') {
     const failureLabel = stats.failures === 1 ? 'error bloqueante' : 'errores bloqueantes';
-    const firstFailure = allChecks.find(({ check }) => check.status === 'FAIL');
     return {
       actionRequired: `${stats.failures} ${failureLabel} deben corregirse`,
-      problemLocation: firstFailure ? `${firstFailure.check.group ?? 'General'} / ${firstFailure.check.id}` : 'General',
       summaryLine: `El diseño no cumple: hay ${stats.failures} error(es) bloqueante(s).`,
     };
   }
@@ -238,14 +242,12 @@ function buildExecutiveSummary(response, stats, validators, allChecks) {
     const warningCountLabel = stats.warnings === 1 ? 'advertencia de estilo' : 'advertencias de estilo';
     return {
       actionRequired: `Corregir ${stats.warnings} ${warningCountLabel}`,
-      problemLocation: firstWarning ? `${firstWarning.check.group ?? 'General'} / ${firstWarning.check.id}` : 'General',
       summaryLine: `Cumple con advertencias: revisar ${warningLabel}.`,
     };
   }
 
   return {
     actionRequired: 'No aplica',
-    problemLocation: 'Ninguno',
     summaryLine: `El diseño cumple sin observaciones bloqueantes. ${validators.length} DSLs ejecutados y ${allChecks.length} reglas evaluadas.`,
   };
 }
@@ -285,7 +287,11 @@ function escapeTableCell(value) {
 
 function suggestAction(check) {
   if (check.status === 'WARN') {
-    return check.message ?? 'Revisar la convención y ajustar el elemento.';
+    if (/may[uú]scula/i.test(String(check.message ?? ''))) {
+      return 'Renombrar el elemento para que inicie con mayúscula.';
+    }
+
+    return 'Revisar la convención y ajustar el elemento.';
   }
 
   if (check.status === 'FAIL') {
