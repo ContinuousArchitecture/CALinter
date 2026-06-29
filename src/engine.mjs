@@ -184,18 +184,18 @@ function isMergeAllowedSummary({ failCount, systemError }) {
 async function renderDashboardSectionFinal({ validators, score, passCount, warnCount, failCount, rulesEvaluated, dslCount, resultLabel }) {
   try {
     const [complianceUrl, distributionUrl, dimensionsUrl] = await Promise.all([
-      createQuickChartUrl(buildComplianceChartConfig({ score, failCount, warnCount })),
-      createQuickChartUrl(buildDistributionChartConfig({ passCount, warnCount, failCount })),
-      createQuickChartUrl(buildDimensionsChartConfig(buildDimensionSummaries(validators))),
+      createQuickChartUrl(buildComplianceChartConfig({ score, failCount, warnCount }), { width: 220, height: 160 }),
+      createQuickChartUrl(buildDistributionChartConfig({ passCount, warnCount, failCount }), { width: 260, height: 160 }),
+      createQuickChartUrl(buildDimensionsChartConfig(buildDimensionSummaries(validators)), { width: 300, height: 180 }),
     ]);
 
     return {
       lines: [
         '## Dashboard de cumplimiento',
         '',
-        `![Cumplimiento general](${complianceUrl})`,
-        `![Distribución de resultados](${distributionUrl})`,
-        `![Calidad por dimensión](${dimensionsUrl})`,
+        '| Cumplimiento | Reglas | Dimensiones |',
+        '|---|---|---|',
+        `| <img src="${complianceUrl}" width="220" alt="Cumplimiento general"> | <img src="${distributionUrl}" width="260" alt="Distribución de resultados"> | <img src="${dimensionsUrl}" width="300" alt="Calidad por dimensión"> |`,
         '',
       ],
       systemIssueLines: [],
@@ -245,11 +245,13 @@ function buildComplianceChartConfig({ score, failCount, warnCount }) {
       ],
     },
     options: {
+      layout: { padding: 4 },
       plugins: {
         legend: { display: false },
         title: {
           display: true,
-          text: `Cumplimiento general ${formatScore(safeScore)}`,
+          text: `Cumplimiento ${formatScore(safeScore)}`,
+          font: { size: 13 },
         },
       },
       cutout: '70%',
@@ -271,18 +273,21 @@ function buildDistributionChartConfig({ passCount, warnCount, failCount }) {
       ],
     },
     options: {
+      layout: { padding: 4 },
       plugins: {
         legend: { display: false },
         title: {
           display: true,
-          text: 'Distribución de reglas',
+          text: 'Reglas',
+          font: { size: 13 },
         },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { precision: 0 },
+          ticks: { precision: 0, font: { size: 10 } },
         },
+        x: { ticks: { font: { size: 10 } } },
       },
     },
   };
@@ -303,18 +308,23 @@ function buildDimensionsChartConfig(dimensions) {
     },
     options: {
       indexAxis: 'y',
+      layout: { padding: 4 },
       plugins: {
         legend: { display: false },
         title: {
           display: true,
-          text: 'Calidad por dimensión',
+          text: 'Dimensiones',
+          font: { size: 13 },
         },
       },
       scales: {
         x: {
           min: 0,
           max: 10,
-          ticks: { stepSize: 2, precision: 0 },
+          ticks: { stepSize: 2, precision: 0, font: { size: 10 } },
+        },
+        y: {
+          ticks: { font: { size: 10 } },
         },
       },
     },
@@ -324,19 +334,19 @@ function buildDimensionsChartConfig(dimensions) {
 function buildDimensionSummaries(validators) {
   const dimensions = [
     {
-      label: 'Consistencia XML',
+      label: 'XML',
       matches: ({ validator, check }) => validator.dslType === 'archi-consistency' && check.group === 'document',
     },
     {
-      label: 'Identidad Archi',
+      label: 'Identidad',
       matches: ({ validator, check }) => validator.dslType === 'archi-consistency' && check.group === 'archiIdentity',
     },
     {
-      label: 'Estructura Archi',
+      label: 'Estructura',
       matches: ({ validator, check }) => validator.dslType === 'archi-consistency' && check.group === 'archiStructure',
     },
     {
-      label: 'Integridad interna',
+      label: 'Integridad',
       matches: ({ validator, check }) => validator.dslType === 'archi-consistency' && check.group === 'internalIntegrity',
     },
     {
