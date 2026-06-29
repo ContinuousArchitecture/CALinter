@@ -193,7 +193,7 @@ async function renderDashboardSectionFinal({ validators, score, passCount, warnC
 
     return {
       lines: [
-        `<strong>Cumplimiento</strong> [${formatScore(score)}](${complianceUrl}) · <strong>Reglas</strong> [PASS ${formatCount(passCount)} · WARN ${formatCount(warnCount)} · FAIL ${formatCount(failCount)}](${distributionUrl}) · <strong>Dimensiones</strong> [${worstDimension.label} ${formatScore(worstDimension.score)}](${dimensionsUrl})`,
+        `| <img src="${complianceUrl}" width="220" height="160" alt="Cumplimiento general"> | <img src="${distributionUrl}" width="260" height="160" alt="Distribución de resultados"> | <img src="${dimensionsUrl}" width="300" height="160" alt="Calidad por dimensión"> |`,
         '',
       ],
       systemIssueLines: [],
