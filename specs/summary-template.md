@@ -1,24 +1,21 @@
 # Reporte de Validación ArchiMate
 
-## Cumplimiento: **{{score}}** — {{result}}
-
-| Indicador | Valor |
-|---|---|
-| **Resultado** | `{{status}}` |
-| **Decisión** | {{result}} |
-| **Merge permitido** | {{mergeAllowed}} |
-| **Errores bloqueantes** | {{blockingErrors}} |
-| **Advertencias** | {{warnings}} |
-| **Reglas evaluadas** | {{rulesEvaluated}} |
-| **Archivo evaluado** | `{{evaluatedFile}}` |
+> [!NOTE]
+> **Resumen del artefacto evaluado**
+>
+> | Indicador | Valor |
+> |---|---|
+> | **Archivo** | `{{evaluatedFile}}` |
+> | **Tipo de artefacto** | {{artifactType}} |
+> | **Herramienta origen** | {{sourceTool}} |
+> | **Cumplimiento** | **{{score}}** |
+> | **Resultado** | {{result}} |
+> | **Merge permitido** | {{mergeAllowed}} |
+> | **Errores bloqueantes** | {{blockingErrors}} |
+> | **Advertencias** | {{warnings}} |
+> | **Reglas evaluadas** | {{rulesEvaluated}} |
+> | **DSLs ejecutados** | {{dslsExecuted}} |
 
 ## Reglas evaluadas
 
 {{rules_section}}
-
-<details>
-<summary>Información técnica de ejecución</summary>
-
-{{technical_section}}
-
-</details>

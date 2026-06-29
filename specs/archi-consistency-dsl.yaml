@@ -107,7 +107,7 @@ rules:
 
   elementos_archimate_regla:
     severity: error
-    description: Verifica que existan elementos ArchiMate tipados con xsi:type.
+    description: Verifica que existan elementos ArchiMate tipados con `xsi:type`.
     failureMessage: El modelo debe contener elementos ArchiMate con tipos declarados mediante xsi:type.
     validate:
       xpath: /archimate:model/folder[not(@name="Relations") and not(@name="Views")]//element
@@ -118,7 +118,7 @@ rules:
 
   vistas_archi_regla:
     severity: error
-    description: Verifica que la carpeta Views contenga vistas de Archi.
+    description: Verifica que la carpeta `Views` contenga vistas de Archi.
     failureMessage: La carpeta Views debe contener al menos una vista ArchiMate.
     validate:
       xpath: /archimate:model/folder[@name="Views"]//element
@@ -128,7 +128,7 @@ rules:
 
   relaciones_archi_regla:
     severity: warning
-    description: Verifica que la carpeta Relations exista y contenga relaciones ArchiMate cuando el modelo tenga relaciones declaradas.
+    description: Verifica que la carpeta `Relations` exista y contenga relaciones ArchiMate cuando el modelo tenga relaciones declaradas.
     failureMessage: Las relaciones deben estar declaradas como elementos ArchiMate dentro de la carpeta Relations.
     validate:
       xpath: /archimate:model/folder[@name="Relations"]//element
@@ -148,7 +148,7 @@ rules:
 
   referencias_relaciones_regla:
     severity: error
-    description: Verifica que las relaciones apunten a elementos existentes mediante source y target.
+    description: Verifica que las relaciones apunten a elementos existentes mediante `source` y `target`.
     failureMessage: Existen relaciones con source o target inexistente dentro del modelo.
     validate:
       xpath: /archimate:model/folder[@name="Relations"]//element[@source or @target]

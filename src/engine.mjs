@@ -97,7 +97,6 @@ export const Engine = {
     const ruleChecks = allChecks.map(({ check }) => check);
     const stats = collectStats(validators, allChecks);
     const status = response.lintStatus ?? response.status ?? 'UNKNOWN';
-    const executive = buildExecutiveSummary(response, stats, validators, allChecks);
     const artifactPath = response.artifact?.current
       ? toRelativePath(response.repoRoot, response.artifact.current)
       : (response.artifact?.source?.path ?? 'Unknown');
@@ -105,13 +104,15 @@ export const Engine = {
     const summaryTemplatePath = resolveTemplatePath(response.manifest, response.summaryTemplatePath ?? this.defaultSummaryTemplatePath);
     const warningTemplatePath = resolveTemplatePath(response.manifest, response.warningTemplatePath ?? this.defaultWarningTemplatePath);
     const rendered = renderTemplate(loadTemplateFile(summaryTemplatePath), {
+      artifactType: formatArtifactType(response.artifact?.type),
+      sourceTool: formatToolName(response.artifact?.tool),
       score: globalScore === null ? 'No evaluable' : formatScore(globalScore),
       result: decisionFromLintStatus(status),
-      status,
       mergeAllowed: isMergeAllowed(status) ? 'Sí' : 'No',
       blockingErrors: String(stats.failures),
       warnings: String(stats.warnings),
       rulesEvaluated: String(allChecks.length),
+      dslsExecuted: String(validators.length),
       evaluatedFile: escapeTableCell(artifactPath),
       rules_section: renderRulesSection({
         status,
@@ -120,7 +121,6 @@ export const Engine = {
         warningTemplatePath,
         response,
       }),
-      technical_section: renderTechnicalSection(response, artifactPath, validators.length, allChecks.length),
     });
 
     return `${rendered.trimEnd()}\n`;
@@ -141,28 +141,6 @@ function resolveTemplatePath(manifestPath, templatePath) {
 
 function renderTemplate(template, values) {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => String(values[key] ?? ''));
-}
-
-function renderWarningBlock(templatePath, status, actionable, error) {
-  if (status === 'WARN' && actionable.length > 0) {
-    const current = actionable[0]?.check ?? {};
-    return renderTemplate(loadTemplateFile(templatePath), {
-      ruleId: current.id ?? 'N/A',
-      location: current.group ?? 'General',
-      element: current.detail ?? current.message ?? 'N/A',
-      problem: current.message ?? current.detail ?? 'Revisar el hallazgo reportado.',
-      recommendation: suggestAction(current),
-    });
-  }
-
-  if (status === 'FAIL' || error) {
-    return [
-      '> [!CAUTION]',
-      `> ${error ?? 'El diseño no cumple.'}`,
-    ].join('\n');
-  }
-
-  return '';
 }
 
 function renderRulesSection({ status, actionable, validators, warningTemplatePath, response }) {
@@ -190,7 +168,7 @@ function renderRulesSection({ status, actionable, validators, warningTemplatePat
 function renderPassBlock(passedChecks) {
   const count = passedChecks.length;
   const lines = [
-    `> [!TIP]`,
+    '> [!TIP]',
     `> **PASS — ${count} reglas cumplidas**`,
     '>',
   ];
@@ -240,59 +218,11 @@ function renderFailBlock(systemStatus, actionable) {
   return lines.join('\n');
 }
 
-function renderTechnicalSection(response, artifactPath, validatorCount, checkCount) {
-  return [
-    '| Indicador | Valor |',
-    '|---|---|',
-    `| Estado técnico | ${statusVisual(response.systemStatus ?? 'UNKNOWN')} |`,
-    `| Manifiesto | \`${escapeTableCell(response.manifest ?? '')}\` |`,
-    `| Patrón fuente | \`${escapeTableCell(response.artifact?.source?.path ?? 'Unknown')}\` |`,
-    `| Artefacto evaluado | \`${escapeTableCell(artifactPath)}\` |`,
-    `| Motor | \`${Engine.version}\` |`,
-    `| DSLs ejecutados | \`${validatorCount}\` |`,
-    `| Reglas ejecutadas | \`${checkCount}\` |`,
-    '',
-    '> Las advertencias de plataforma o runner se muestran separadas del resultado de compliance.',
-  ].join('\n');
-}
-
 function collectStats(validators, allChecks) {
   const warnings = allChecks.filter(({ check }) => check.status === 'WARN').length;
   const failures = allChecks.filter(({ check }) => check.status === 'FAIL').length;
   const systemErrors = validators.filter((validator) => validator.systemStatus === 'ERROR').length;
   return { warnings, failures, systemErrors };
-}
-
-function buildExecutiveSummary(response, stats, validators, allChecks) {
-  if (response.systemStatus === 'ERROR') {
-    return {
-      actionRequired: 'Resolver el error técnico del motor',
-      summaryLine: 'No se pudo evaluar el diseño por un error técnico.',
-    };
-  }
-
-  if (response.lintStatus === 'FAIL') {
-    const failureLabel = stats.failures === 1 ? 'error bloqueante' : 'errores bloqueantes';
-    return {
-      actionRequired: `${stats.failures} ${failureLabel} deben corregirse`,
-      summaryLine: `El diseño no cumple: hay ${stats.failures} error(es) bloqueante(s).`,
-    };
-  }
-
-  if (response.lintStatus === 'WARN') {
-    const firstWarning = allChecks.find(({ check }) => check.status === 'WARN');
-    const warningLabel = firstWarning ? `${firstWarning.check.id} en ${firstWarning.check.group ?? 'General'}` : 'una advertencia de estilo';
-    const warningCountLabel = stats.warnings === 1 ? 'advertencia de estilo' : 'advertencias de estilo';
-    return {
-      actionRequired: `Corregir ${stats.warnings} ${warningCountLabel}`,
-      summaryLine: `El diseño puede continuar. Revisar ${warningLabel}.`,
-    };
-  }
-
-  return {
-    actionRequired: 'No aplica',
-    summaryLine: `El diseño cumple sin observaciones bloqueantes. ${validators.length} DSLs ejecutados y ${allChecks.length} reglas evaluadas.`,
-  };
 }
 
 function countChecks(checks) {
@@ -333,6 +263,14 @@ function calculateComplianceScore(checks) {
 
 function formatScore(score) {
   return `${score}/10`;
+}
+
+function formatArtifactType(value) {
+  return String(value ?? 'ArchiMate').toLowerCase() === 'archimate' ? 'ArchiMate' : String(value ?? 'ArchiMate');
+}
+
+function formatToolName(value) {
+  return String(value ?? 'Archi').toLowerCase() === 'archi' ? 'Archi' : String(value ?? 'Archi');
 }
 
 function stripTrailingPeriod(value) {

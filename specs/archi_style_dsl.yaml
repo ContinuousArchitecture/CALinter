@@ -29,7 +29,7 @@ styleGuide:
 rules:
   carpetas_obligatorias_regla:
     severity: error
-    description: Valida que la sección Views contenga las carpetas obligatorias.
+    description: Verifica que la sección `Views` contenga las carpetas obligatorias.
     failureMessage: La sección Views debe contener las carpetas AS-IS y TO-BE.
 
     validate:
