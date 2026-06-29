@@ -10,6 +10,21 @@ import { validateDslData, validateManifestData } from './core/schemas.mjs';
 export const Engine = {
   version: '2.0.0',
   defaultManifestPath: 'specs/manifest.yaml',
+  summaryTemplate: {
+    title: 'Architecture Compliance Report',
+    templateFile: 'specs/summary-template.md',
+    noteLabels: {
+      score: 'Cumplimiento',
+      result: 'Resultado',
+      mergeAllowed: 'Merge permitido',
+      blockingErrors: 'Errores bloqueantes',
+      warnings: 'Advertencias',
+      evaluatedFile: 'Archivo evaluado',
+    },
+    warningHeading: 'Reglas no cumplidas',
+    passedHeading: 'Reglas cumplidas',
+    executionHeading: 'Información de ejecución',
+  },
 
   main() {
     const mode = getArg('--mode', 'validate');
@@ -89,11 +104,10 @@ export const Engine = {
   },
 
   renderSummary(response) {
-    const lines = [];
+    const template = this.summaryTemplate;
     const validators = response.validators ?? [];
     const allChecks = validators.flatMap((validator) => (validator.checks ?? []).map((check) => ({ validator, check })));
     const actionable = allChecks.filter(({ check }) => check.status !== 'PASS');
-    const passedChecks = allChecks.filter(({ check }) => check.status === 'PASS');
     const ruleChecks = allChecks.map(({ check }) => check);
     const stats = collectStats(validators, allChecks);
     const status = response.lintStatus ?? response.status ?? 'UNKNOWN';
@@ -103,106 +117,155 @@ export const Engine = {
       : (response.artifact?.source?.path ?? 'Unknown');
     const globalScore = response.systemStatus === 'ERROR' ? null : calculateComplianceScore(ruleChecks);
     const noteLines = [
-      `**Cumplimiento:** ${globalScore === null ? 'No evaluable' : formatScore(globalScore)}`,
-      `**Resultado:** ${decisionFromLintStatus(status)}`,
-      `**Merge permitido:** ${isMergeAllowed(status) ? 'Sí' : 'No'}`,
-      `**Errores bloqueantes:** \`${stats.failures}\``,
-      `**Advertencias:** \`${stats.warnings}\``,
-      `**Archivo evaluado:** \`${escapeTableCell(artifactPath)}\``,
+      `**${template.noteLabels.score}:** ${globalScore === null ? 'No evaluable' : formatScore(globalScore)}`,
+      `**${template.noteLabels.result}:** ${decisionFromLintStatus(status)}`,
+      `**${template.noteLabels.mergeAllowed}:** ${isMergeAllowed(status) ? 'Sí' : 'No'}`,
+      `**${template.noteLabels.blockingErrors}:** \`${stats.failures}\``,
+      `**${template.noteLabels.warnings}:** \`${stats.warnings}\``,
+      `**${template.noteLabels.evaluatedFile}:** \`${escapeTableCell(artifactPath)}\``,
     ];
+    const templateText = loadSummaryTemplate(template.templateFile, response.manifest);
+    const rendered = renderSummaryTemplate(templateText, {
+      title: template.title,
+      note_section: renderNoteSection(noteLines),
+      warning_section: renderWarningSection(status, actionable, response.error, executive),
+      warning_heading: template.warningHeading,
+      failed_rules_section: renderFailedRulesSection(response.systemStatus, actionable),
+      passed_heading: template.passedHeading,
+      passed_rules_section: renderPassedRulesSection(validators),
+      execution_heading: template.executionHeading,
+      execution_section: renderExecutionSection(response, artifactPath, validators.length, allChecks.length),
+    });
 
-    lines.push('# Architecture Compliance Report');
-    lines.push('');
-    lines.push('> [!NOTE]');
-    for (const item of noteLines) {
-      lines.push(`> ${item}`);
-    }
-    lines.push('');
-
-    if (status === 'WARN') {
-      lines.push('> [!WARNING]');
-      lines.push(`> **Regla no cumplida:** ${escapeTableCell(actionable[0]?.check.id ?? 'N/A')}`);
-      lines.push(`> **Ubicación:** ${escapeTableCell(actionable[0]?.check.group ?? 'General')}`);
-      lines.push(`> **Elemento:** ${escapeTableCell(actionable[0]?.check.detail ?? actionable[0]?.check.message ?? 'N/A')}`);
-      lines.push(`> **Problema:** ${escapeTableCell(actionable[0]?.check.message ?? actionable[0]?.check.detail ?? 'Revisar el hallazgo reportado.')}`);
-      lines.push(`> **Recomendación:** ${escapeTableCell(suggestAction(actionable[0]?.check ?? {}))}`);
-      lines.push('');
-    } else if (status === 'FAIL') {
-      lines.push('> [!CAUTION]');
-      lines.push(`> ${executive.summaryLine}`);
-      lines.push('');
-    } else if (response.systemStatus === 'ERROR') {
-      lines.push('> [!CAUTION]');
-      lines.push(`> ${executive.summaryLine}`);
-      lines.push('');
-    }
-
-    lines.push('## Reglas no cumplidas');
-    if (response.systemStatus === 'ERROR') {
-      lines.push('');
-      lines.push(`No se pudo evaluar el diseño: ${response.error ?? 'error técnico'}.`);
-    } else if (actionable.length === 0) {
-      lines.push('');
-      lines.push('No hay reglas no cumplidas.');
-    } else {
-      lines.push('');
-      lines.push('| Estado | Regla | Ubicación | Recomendación |');
-      lines.push('|---|---|---|---|');
-      for (const { check } of actionable) {
-        const location = check.group ?? 'General';
-        const suggestion = escapeTableCell(suggestAction(check));
-        lines.push(`| ${statusVisual(check.status)} | ${escapeTableCell(check.id)} | ${escapeTableCell(location)} | ${suggestion} |`);
-      }
-    }
-
-    lines.push('');
-    lines.push('<details>');
-    lines.push('<summary>Reglas cumplidas</summary>');
-    lines.push('');
-    lines.push('### Evidencia positiva');
-    lines.push('');
-
-    for (const validator of validators) {
-      const counts = countChecks(validator.checks ?? []);
-      const passed = (validator.checks ?? []).filter((check) => check.status === 'PASS');
-      if (passed.length === 0) {
-        continue;
-      }
-
-      lines.push(`#### ${validator.title ?? validator.id ?? 'DSL'}`);
-      if (validator.description) {
-        lines.push(validator.description);
-      }
-      lines.push('');
-      lines.push(`**Estado:** ${statusVisual(validator.status ?? 'UNKNOWN')} | **Reglas OK:** ${counts.PASS}/${counts.PASS + counts.WARN + counts.FAIL + counts.ERROR}`);
-      lines.push('');
-      lines.push('| Estado | Regla | Evidencia |');
-      lines.push('|---|---|---|');
-      for (const check of passed) {
-        lines.push(`| ${statusVisual(check.status ?? 'UNKNOWN')} | ${escapeTableCell(check.id)} | ${escapeTableCell(check.detail ?? 'OK')} |`);
-      }
-      lines.push('');
-    }
-
-    lines.push('### Información de ejecución');
-    lines.push('');
-    lines.push('| Indicador | Valor |');
-    lines.push('|---|---|');
-    lines.push(`| Estado técnico | ${statusVisual(response.systemStatus ?? 'UNKNOWN')} |`);
-    lines.push(`| Manifiesto | \`${escapeTableCell(response.manifest ?? '')}\` |`);
-    lines.push(`| Patrón fuente | \`${escapeTableCell(response.artifact?.source?.path ?? 'Unknown')}\` |`);
-    lines.push(`| Artefacto evaluado | \`${escapeTableCell(artifactPath)}\` |`);
-    lines.push(`| Motor | \`${Engine.version}\` |`);
-    lines.push(`| DSLs ejecutados | \`${validators.length}\` |`);
-    lines.push(`| Reglas ejecutadas | \`${allChecks.length}\` |`);
-    lines.push('');
-    lines.push('> Las advertencias de plataforma o runner se muestran separadas del resultado de compliance.');
-    lines.push('');
-    lines.push('</details>');
-
-    return `${lines.join('\n')}\n`;
+    return `${rendered.trimEnd()}\n`;
   },
 };
+
+function loadSummaryTemplate(templateFile, manifestPath) {
+  const manifestDir = path.dirname(manifestPath);
+  const candidate = path.resolve(manifestDir, templateFile);
+  if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+    return fs.readFileSync(candidate, 'utf8');
+  }
+
+  return [
+    '# {{title}}',
+    '',
+    '{{note_section}}',
+    '',
+    '{{warning_section}}',
+    '',
+    '## {{warning_heading}}',
+    '{{failed_rules_section}}',
+    '',
+    '<details>',
+    '<summary>{{passed_heading}}</summary>',
+    '',
+    '{{passed_rules_section}}',
+    '',
+    '### {{execution_heading}}',
+    '{{execution_section}}',
+    '',
+    '</details>',
+  ].join('\n');
+}
+
+function renderSummaryTemplate(template, values) {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => String(values[key] ?? ''));
+}
+
+function renderNoteSection(noteLines) {
+  const lines = ['> [!NOTE]'];
+  for (const item of noteLines) {
+    lines.push(`> ${item}`);
+  }
+  return lines.join('\n');
+}
+
+function renderWarningSection(status, actionable, error, executive) {
+  if (status === 'WARN' && actionable.length > 0) {
+    const current = actionable[0]?.check ?? {};
+    return [
+      '> [!WARNING]',
+      `> **Regla no cumplida:** ${escapeTableCell(current.id ?? 'N/A')}`,
+      `> **Ubicación:** ${escapeTableCell(current.group ?? 'General')}`,
+      `> **Elemento:** ${escapeTableCell(current.detail ?? current.message ?? 'N/A')}`,
+      `> **Problema:** ${escapeTableCell(current.message ?? current.detail ?? 'Revisar el hallazgo reportado.')}`,
+      `> **Recomendación:** ${escapeTableCell(suggestAction(current))}`,
+    ].join('\n');
+  }
+
+  if (status === 'FAIL' || error) {
+    return [
+      '> [!CAUTION]',
+      `> ${executive.summaryLine}`,
+    ].join('\n');
+  }
+
+  return '';
+}
+
+function renderFailedRulesSection(systemStatus, actionable) {
+  if (systemStatus === 'ERROR') {
+    return 'No se pudo evaluar el diseño: error técnico.';
+  }
+
+  if (actionable.length === 0) {
+    return 'No hay reglas no cumplidas.';
+  }
+
+  const lines = ['| Estado | Regla | Ubicación | Recomendación |', '|---|---|---|---|'];
+  for (const { check } of actionable) {
+    const location = check.group ?? 'General';
+    const suggestion = escapeTableCell(suggestAction(check));
+    lines.push(`| ${statusVisual(check.status)} | ${escapeTableCell(check.id)} | ${escapeTableCell(location)} | ${suggestion} |`);
+  }
+  return lines.join('\n');
+}
+
+function renderPassedRulesSection(validators) {
+  const blocks = [];
+  for (const validator of validators) {
+    const counts = countChecks(validator.checks ?? []);
+    const passed = (validator.checks ?? []).filter((check) => check.status === 'PASS');
+    if (passed.length === 0) {
+      continue;
+    }
+
+    const lines = [];
+    lines.push(`#### ${validator.title ?? validator.id ?? 'DSL'}`);
+    if (validator.description) {
+      lines.push(validator.description);
+    }
+    lines.push('');
+    lines.push(`**Estado:** ${statusVisual(validator.status ?? 'UNKNOWN')} | **Reglas OK:** ${counts.PASS}/${counts.PASS + counts.WARN + counts.FAIL + counts.ERROR}`);
+    lines.push('');
+    lines.push('| Estado | Regla | Evidencia |');
+    lines.push('|---|---|---|');
+    for (const check of passed) {
+      lines.push(`| ${statusVisual(check.status ?? 'UNKNOWN')} | ${escapeTableCell(check.id)} | ${escapeTableCell(check.detail ?? 'OK')} |`);
+    }
+    blocks.push(lines.join('\n'));
+  }
+
+  return blocks.join('\n\n');
+}
+
+function renderExecutionSection(response, artifactPath, validatorCount, checkCount) {
+  return [
+    '| Indicador | Valor |',
+    '|---|---|',
+    `| Estado técnico | ${statusVisual(response.systemStatus ?? 'UNKNOWN')} |`,
+    `| Manifiesto | \`${escapeTableCell(response.manifest ?? '')}\` |`,
+    `| Patrón fuente | \`${escapeTableCell(response.artifact?.source?.path ?? 'Unknown')}\` |`,
+    `| Artefacto evaluado | \`${escapeTableCell(artifactPath)}\` |`,
+    `| Motor | \`${Engine.version}\` |`,
+    `| DSLs ejecutados | \`${validatorCount}\` |`,
+    `| Reglas ejecutadas | \`${checkCount}\` |`,
+    '',
+    '> Las advertencias de plataforma o runner se muestran separadas del resultado de compliance.',
+  ].join('\n');
+}
 
 function collectStats(validators, allChecks) {
   const warnings = allChecks.filter(({ check }) => check.status === 'WARN').length;
