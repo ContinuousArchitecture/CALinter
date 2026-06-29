@@ -106,11 +106,12 @@ export const Engine = {
     const mergeAllowed = isMergeAllowedSummary({ failCount: failChecks.length, systemError: false });
     const rulesEvaluated = checks.length;
     const rulesPassed = passChecks.length;
+    const dslCount = validators.length;
 
     return `${[
       '# Reporte de Validación ArchiMate',
       '',
-      ...renderCompliancePanelFinal({
+      ...renderDashboardHeaderFinal({
         artifactPath,
         score,
         decision,
@@ -119,6 +120,7 @@ export const Engine = {
         warnCount: warnChecks.length,
         rulesEvaluated,
         rulesPassed,
+        dslCount,
       }),
       ...renderWarningPanelFinal(warnChecks),
       ...renderCautionPanelFinal(failChecks),
@@ -181,6 +183,72 @@ function getDecision({ failCount, warnCount, systemError }) {
 
 function isMergeAllowedSummary({ failCount, systemError }) {
   return !systemError && failCount === 0;
+}
+
+function renderDashboardHeaderFinal({ artifactPath, score, decision, mergeAllowed, failCount, warnCount, rulesEvaluated, rulesPassed, dslCount }) {
+  const safeScore = score === null ? 0 : Math.max(0, Math.min(10, Number(score)));
+  const scoreText = score === null ? 'No evaluable' : formatScore(safeScore);
+  const barText = score === null ? '░░░░░░░░░░' : renderScoreBar(safeScore);
+  const fileLine = boxLine(`  ${artifactPath}`);
+  const scoreLine = boxLine(`  SCORE        ${scoreText}  ${barText}`);
+  const decisionLine = boxLine(`  DECISIÓN     ${decision}`);
+  const mergeLine = boxLine(`  MERGE        ${mergeAllowed ? 'Permitido' : 'Bloqueado'}`);
+  const countsRow = `  ${cell('FAIL 🔴', 18)}│  ${cell('WARN 🟡', 18)}│  ${cell('PASS 🟢', 18)} `;
+  const countsValues = `  ${cell(`${formatCount(failCount)} bloqueantes`, 18)}│  ${cell(`${formatCount(warnCount)} observación${warnCount === 1 ? '' : 'es'}`, 18)}│  ${cell(`${formatCount(rulesPassed)} reglas`, 18)} `;
+  const footerLine = boxLine(`  Reglas evaluadas: ${formatCount(rulesEvaluated)}                         DSLs: ${formatCount(dslCount)}`);
+
+  return [
+    '> ```text',
+    '> ┌──────────────────────────────────────────────────────────────┐',
+    `> │${fileLine}│`,
+    '> ├──────────────────────────────────────────────────────────────┤',
+    `> │${scoreLine}│`,
+    `> │${decisionLine}│`,
+    `> │${mergeLine}│`,
+    '> ├──────────────────────┬──────────────────────┬────────────────┤',
+    `> │${countsRow}│`,
+    `> │${countsValues}│`,
+    '> ├──────────────────────┴──────────────────────┴────────────────┤',
+    `> │${footerLine}│`,
+    '> └──────────────────────────────────────────────────────────────┘',
+    '> ```',
+    '',
+  ];
+}
+
+function boxLine(content) {
+  return fitText(content, 60);
+}
+
+function cell(content, width) {
+  return fitText(content, width).trimEnd();
+}
+
+function fitText(content, width) {
+  const text = String(content ?? '');
+  if (text.length >= width) {
+    return text.slice(0, width);
+  }
+
+  return text.padEnd(width, ' ');
+}
+
+function formatCount(value) {
+  if (Number(value) > 99) {
+    return '99+';
+  }
+
+  return String(Math.max(0, Number(value) || 0)).padStart(2, '0');
+}
+
+function formatScore(value) {
+  const safeValue = Math.max(0, Math.min(10, Number(value) || 0));
+  return `${String(safeValue).padStart(2, '0')}/10`;
+}
+
+function renderScoreBar(score) {
+  const safeScore = Math.max(0, Math.min(10, Number(score) || 0));
+  return `${'█'.repeat(safeScore)}${'░'.repeat(10 - safeScore)}`;
 }
 
 function renderCompliancePanelFinal({ artifactPath, score, decision, mergeAllowed, failCount, warnCount, rulesEvaluated, rulesPassed }) {
