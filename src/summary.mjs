@@ -54,39 +54,167 @@ function countChecks(checks) {
 
 function validateDesignContracts(repoRoot) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const adapterPath = path.join(root, '.calinter', 'archi-rules.yml');
+  const rulesPath = path.join(root, '.calinter', 'archi-rules.yml');
   const qualityPath = path.join(root, '.calinter', 'archi-quality.yml');
+  const catalogPath = path.join(root, 'reports', 'catalog.json');
   const ruleResultsPath = path.join(root, 'reports', 'rule-results.json');
   const qualityScorePath = path.join(root, 'reports', 'quality-score.json');
   const quickchartPath = path.join(root, 'reports', 'quickchart-radar.json');
 
-  const rulesConfig = loadYamlFile(adapterPath);
+  const rulesConfig = loadYamlFile(rulesPath);
   const qualityConfig = loadYamlFile(qualityPath);
+  const catalog = readJsonFile(catalogPath);
   const ruleResults = readJsonFile(ruleResultsPath);
   const qualityScore = readJsonFile(qualityScorePath);
   const quickchart = readJsonFile(quickchartPath);
 
-  const definedRules = new Set(Object.keys(rulesConfig.rules ?? {}));
-  const referencedQualityRules = new Set(
-    Object.values(qualityConfig.qualityModel?.dimensions ?? {}).flatMap((dimension) => (dimension.rules ?? []).map((rule) => rule.id))
-  );
-  const resultRuleIds = new Set((ruleResults.rules ?? []).map((rule) => rule.ruleId));
-  const scoredRuleIds = new Set(
-    (qualityScore.dimensions ?? []).flatMap((dimension) => (dimension.rules ?? []).map((rule) => rule.ruleId))
-  );
+  const rulesById = new Map(Object.entries(rulesConfig.rules ?? {}));
+  const qualityDimensions = Object.entries(qualityConfig.qualityModel?.dimensions ?? {});
+  const ruleResultsById = new Map((ruleResults.rules ?? []).map((rule) => [rule.ruleId, rule]));
 
-  for (const ruleId of referencedQualityRules) {
-    if (!definedRules.has(ruleId)) {
-      throw new Error(`Contrato inválido: quality.yml referencia la regla inexistente '${ruleId}'.`);
+  for (const [, dimension] of qualityDimensions) {
+    for (const ruleRef of dimension.rules ?? []) {
+      if (!rulesById.has(ruleRef.id)) {
+        throw new Error(`Contrato inválido: quality.yml referencia la regla inexistente '${ruleRef.id}'.`);
+      }
     }
   }
 
-  for (const ruleId of scoredRuleIds) {
-    if (!resultRuleIds.has(ruleId)) {
-      throw new Error(`Contrato inválido: quality-score.json usa la regla '${ruleId}' sin resultado en rule-results.json.`);
+  for (const dimension of qualityScore.dimensions ?? []) {
+    for (const ruleRef of dimension.rules ?? []) {
+      if (!ruleResultsById.has(ruleRef.ruleId)) {
+        throw new Error(`Contrato inválido: quality-score.json usa la regla '${ruleRef.ruleId}' sin resultado en rule-results.json.`);
+      }
     }
   }
 
+  const expectedQualityScore = buildExpectedQualityScore({ qualityConfig, qualityDimensions, ruleResultsById, rulesById });
+  assertQualityScoreMatches(qualityScore, expectedQualityScore);
+  assertQuickchartMatchesQualityScore(quickchart, qualityScore);
+
+  if (ruleResultsById.get('referencias_rotas_regla')?.status === 'pass') {
+    validateCatalogReferences(catalog);
+  }
+}
+
+function buildExpectedQualityScore({ qualityConfig, qualityDimensions, ruleResultsById, rulesById }) {
+  const dimensions = qualityDimensions.map(([dimensionId, dimension]) => {
+    const rules = (dimension.rules ?? []).map((ruleRef) => {
+      const result = ruleResultsById.get(ruleRef.id);
+      if (!result) {
+        throw new Error(`Contrato inválido: falta el resultado de la regla '${ruleRef.id}' para recalcular quality-score.json.`);
+      }
+
+      return {
+        ruleId: ruleRef.id,
+        weight: Number(ruleRef.weight) || 0,
+        score: Number(result.score) || 0,
+      };
+    });
+
+    const weightTotal = rules.reduce((sum, rule) => sum + rule.weight, 0);
+    const weightedScore = rules.reduce((sum, rule) => sum + (rule.score * rule.weight), 0);
+    const score = weightTotal > 0 ? Math.round(weightedScore / weightTotal) : 0;
+    const hasCriticalFailure = rules.some((rule) => (ruleResultsById.get(rule.ruleId)?.status === 'fail') && String(rulesById.get(rule.ruleId)?.severity ?? '').toLowerCase() === 'error');
+    const target = Number(dimension.target) || 0;
+
+    return {
+      id: dimensionId,
+      label: dimension.label,
+      target,
+      score,
+      status: hasCriticalFailure ? 'fail' : (score >= target ? 'pass' : 'warning'),
+      weightTotal,
+      rules,
+    };
+  });
+
+  const overallScore = dimensions.length > 0
+    ? Math.round(dimensions.reduce((sum, dimension) => sum + dimension.score, 0) / dimensions.length)
+    : 0;
+  const status = dimensions.some((dimension) => dimension.status === 'fail')
+    ? 'fail'
+    : (dimensions.every((dimension) => dimension.status === 'pass') ? 'pass' : 'warning');
+
+  return {
+    overallScore,
+    status,
+    radarOrder: dimensions.map((dimension) => dimension.label),
+    dimensions,
+  };
+}
+
+function assertQualityScoreMatches(actual, expected) {
+  if (Number(actual?.overallScore) !== expected.overallScore) {
+    throw new Error(`Contrato inválido: quality-score.json no recalcula el score global esperado (${expected.overallScore}).`);
+  }
+
+  if (String(actual?.status ?? '') !== expected.status) {
+    throw new Error(`Contrato inválido: quality-score.json no coincide con el estado esperado '${expected.status}'.`);
+  }
+
+  if (!arraysEqual(actual?.radarOrder ?? [], expected.radarOrder)) {
+    throw new Error('Contrato inválido: quality-score.json no coincide con el orden esperado de dimensiones.');
+  }
+
+  const actualDimensions = actual?.dimensions ?? [];
+  if (actualDimensions.length !== expected.dimensions.length) {
+    throw new Error('Contrato inválido: quality-score.json tiene un número de dimensiones distinto al esperado.');
+  }
+
+  for (let index = 0; index < expected.dimensions.length; index += 1) {
+    const actualDimension = actualDimensions[index] ?? {};
+    const expectedDimension = expected.dimensions[index];
+
+    if (String(actualDimension.id ?? '') !== expectedDimension.id) {
+      throw new Error(`Contrato inválido: quality-score.json tiene la dimensión '${actualDimension.id ?? 'desconocida'}' fuera de orden o con id distinto.`);
+    }
+
+    if (String(actualDimension.label ?? '') !== expectedDimension.label) {
+      throw new Error(`Contrato inválido: quality-score.json no coincide con la etiqueta esperada de '${expectedDimension.label}'.`);
+    }
+
+    if (Number(actualDimension.target) !== expectedDimension.target) {
+      throw new Error(`Contrato inválido: quality-score.json no coincide con el target de '${expectedDimension.label}'.`);
+    }
+
+    if (Number(actualDimension.score) !== expectedDimension.score) {
+      throw new Error(`Contrato inválido: quality-score.json no recalcula el score de '${expectedDimension.label}'.`);
+    }
+
+    if (String(actualDimension.status ?? '') !== expectedDimension.status) {
+      throw new Error(`Contrato inválido: quality-score.json no coincide con el estado de '${expectedDimension.label}'.`);
+    }
+
+    if (Number(actualDimension.weightTotal) !== expectedDimension.weightTotal) {
+      throw new Error(`Contrato inválido: quality-score.json no coincide con el peso total de '${expectedDimension.label}'.`);
+    }
+
+    const actualRules = actualDimension.rules ?? [];
+    if (actualRules.length !== expectedDimension.rules.length) {
+      throw new Error(`Contrato inválido: quality-score.json no coincide con el número de reglas de '${expectedDimension.label}'.`);
+    }
+
+    for (let ruleIndex = 0; ruleIndex < expectedDimension.rules.length; ruleIndex += 1) {
+      const actualRule = actualRules[ruleIndex] ?? {};
+      const expectedRule = expectedDimension.rules[ruleIndex];
+
+      if (String(actualRule.ruleId ?? '') !== expectedRule.ruleId) {
+        throw new Error(`Contrato inválido: quality-score.json no coincide con la regla '${expectedRule.ruleId}' de '${expectedDimension.label}'.`);
+      }
+
+      if (Number(actualRule.weight) !== expectedRule.weight) {
+        throw new Error(`Contrato inválido: quality-score.json no coincide con el peso de '${expectedRule.ruleId}'.`);
+      }
+
+      if (Number(actualRule.score) !== expectedRule.score) {
+        throw new Error(`Contrato inválido: quality-score.json no coincide con el score de '${expectedRule.ruleId}'.`);
+      }
+    }
+  }
+}
+
+function assertQuickchartMatchesQualityScore(quickchart, qualityScore) {
   const radarLabels = quickchart?.data?.labels ?? [];
   const radarOrder = qualityScore.radarOrder ?? [];
   const evaluatedSeries = quickchart?.data?.datasets?.[0]?.data ?? [];
@@ -104,6 +232,38 @@ function validateDesignContracts(repoRoot) {
 
   if (!arraysEqual(targetSeries, dimensionTargets)) {
     throw new Error('Contrato inválido: quickchart-radar.json no coincide con quality-score.json en el dataset Objetivo.');
+  }
+}
+
+function validateCatalogReferences(catalog) {
+  const elementIds = new Set((catalog.elements ?? []).map((element) => element.id));
+  const relationshipIds = new Set((catalog.relationships ?? []).map((relationship) => relationship.id));
+  const brokenReferences = [];
+
+  for (const object of catalog.diagramObjects ?? []) {
+    if (!elementIds.has(object.elementRef)) {
+      brokenReferences.push(`diagramObject:${object.id}->${object.elementRef}`);
+    }
+  }
+
+  for (const connection of catalog.diagramConnections ?? []) {
+    if (!relationshipIds.has(connection.relationshipRef)) {
+      brokenReferences.push(`diagramConnection:${connection.id}->${connection.relationshipRef}`);
+    }
+  }
+
+  for (const relationship of catalog.relationships ?? []) {
+    if (!elementIds.has(relationship.source)) {
+      brokenReferences.push(`relationship:${relationship.id}.source->${relationship.source}`);
+    }
+
+    if (!elementIds.has(relationship.target)) {
+      brokenReferences.push(`relationship:${relationship.id}.target->${relationship.target}`);
+    }
+  }
+
+  if (brokenReferences.length > 0) {
+    throw new Error(`Contrato inválido: catalog.json contiene referencias rotas (${brokenReferences.join(', ')}).`);
   }
 }
 

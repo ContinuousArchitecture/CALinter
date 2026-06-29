@@ -4,9 +4,10 @@
     "generatedAt": "2026-06-29T16:00:00.000Z",
     "version": "0.0.3"
   },
-  "overallScore": 84,
+  "overallScore": 86,
   "status": "warning",
   "radarOrder": [
+    "Gobierno",
     "Estructura",
     "Nomenclatura",
     "Integridad",
@@ -15,6 +16,17 @@
     "Legibilidad"
   ],
   "dimensions": [
+    {
+      "id": "gobierno",
+      "label": "Gobierno",
+      "target": 100,
+      "score": 100,
+      "status": "pass",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "contract_consistency_check", "weight": 100, "score": 100 }
+      ]
+    },
     {
       "id": "estructura",
       "label": "Estructura",

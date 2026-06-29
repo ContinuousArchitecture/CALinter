@@ -5,6 +5,36 @@
   },
   "rules": [
     {
+      "ruleId": "contract_consistency_check",
+      "dimension": "Gobierno",
+      "severity": "error",
+      "scope": "system",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 5,
+      "passed": 5,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collections": [
+            "rules",
+            "qualityScore",
+            "quickchart",
+            "catalog"
+          ],
+          "contractFiles": [
+            ".calinter/archi-rules.yml",
+            ".calinter/archi-quality.yml",
+            "reports/rule-results.json",
+            "reports/quality-score.json",
+            "reports/quickchart-radar.json",
+            "reports/catalog.json"
+          ]
+        }
+      ]
+    },
+    {
       "ruleId": "carpetas_obligatorias_regla",
       "dimension": "Estructura",
       "severity": "error",

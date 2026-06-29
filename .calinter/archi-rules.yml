@@ -21,6 +21,20 @@ operators:
   - percentageLessThanOrEqual
 
 rules:
+  contract_consistency_check:
+    dimension: Gobierno
+    severity: error
+    source:
+      collection: contracts
+    scope: system
+    assert:
+      operator: exists
+    scoring:
+      mode: binary
+      pass: 100
+      fail: 0
+    failureMessage: El contrato interno del DSL no es consistente.
+
   carpetas_obligatorias_regla:
     dimension: Estructura
     severity: error
