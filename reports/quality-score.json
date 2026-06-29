@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "source": "artifact/source/design.archimate",
+    "generatedAt": "2026-06-29T16:00:00.000Z",
+    "version": "0.0.3"
+  },
+  "overallScore": 84,
+  "status": "warning",
+  "radarOrder": [
+    "Estructura",
+    "Nomenclatura",
+    "Integridad",
+    "Relaciones",
+    "Trazabilidad",
+    "Legibilidad"
+  ],
+  "dimensions": [
+    {
+      "id": "estructura",
+      "label": "Estructura",
+      "target": 90,
+      "score": 100,
+      "status": "pass",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "raiz_archimate_model_regla", "weight": 25, "score": 100 },
+        { "ruleId": "carpetas_raiz_archi_regla", "weight": 25, "score": 100 },
+        { "ruleId": "carpetas_obligatorias_regla", "weight": 50, "score": 100 }
+      ]
+    },
+    {
+      "id": "nomenclatura",
+      "label": "Nomenclatura",
+      "target": 85,
+      "score": 82,
+      "status": "warning",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "nomenclatura_regla", "weight": 100, "score": 82 }
+      ]
+    },
+    {
+      "id": "integridad",
+      "label": "Integridad",
+      "target": 95,
+      "score": 100,
+      "status": "pass",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "documento_texto_plano_regla", "weight": 10, "score": 100 },
+        { "ruleId": "xml_bien_formado_regla", "weight": 15, "score": 100 },
+        { "ruleId": "namespace_archimate_regla", "weight": 15, "score": 100 },
+        { "ruleId": "namespace_xsi_regla", "weight": 10, "score": 100 },
+        { "ruleId": "atributos_modelo_regla", "weight": 10, "score": 100 },
+        { "ruleId": "elementos_archimate_regla", "weight": 15, "score": 100 },
+        { "ruleId": "identificadores_unicos_regla", "weight": 10, "score": 100 },
+        { "ruleId": "referencias_rotas_regla", "weight": 15, "score": 100 }
+      ]
+    },
+    {
+      "id": "relaciones",
+      "label": "Relaciones",
+      "target": 80,
+      "score": 65,
+      "status": "warning",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "relaciones_archi_regla", "weight": 40, "score": 100 },
+        { "ruleId": "abuso_association_regla", "weight": 60, "score": 65 }
+      ]
+    },
+    {
+      "id": "trazabilidad",
+      "label": "Trazabilidad",
+      "target": 80,
+      "score": 58,
+      "status": "warning",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "elementos_aislados_regla", "weight": 100, "score": 58 }
+      ]
+    },
+    {
+      "id": "legibilidad",
+      "label": "Legibilidad",
+      "target": 80,
+      "score": 100,
+      "status": "pass",
+      "weightTotal": 100,
+      "rules": [
+        { "ruleId": "vistas_archi_regla", "weight": 20, "score": 100 },
+        { "ruleId": "vistas_vacias_regla", "weight": 25, "score": 100 },
+        { "ruleId": "exceso_elementos_por_vista_regla", "weight": 25, "score": 100 },
+        { "ruleId": "exceso_relaciones_por_vista_regla", "weight": 30, "score": 100 }
+      ]
+    }
+  ]
+}

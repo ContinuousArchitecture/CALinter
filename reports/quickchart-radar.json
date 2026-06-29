@@ -1,0 +1,53 @@
+{
+  "type": "radar",
+  "data": {
+    "labels": [
+      "Estructura",
+      "Nomenclatura",
+      "Integridad",
+      "Relaciones",
+      "Trazabilidad",
+      "Legibilidad"
+    ],
+    "datasets": [
+      {
+        "label": "Evaluado",
+        "data": [100, 82, 100, 65, 58, 100],
+        "backgroundColor": "rgba(34, 197, 94, 0.20)",
+        "borderColor": "#22c55e",
+        "pointBackgroundColor": "#22c55e",
+        "borderWidth": 2
+      },
+      {
+        "label": "Objetivo",
+        "data": [90, 85, 95, 80, 80, 80],
+        "backgroundColor": "rgba(156, 163, 175, 0.10)",
+        "borderColor": "#9ca3af",
+        "pointBackgroundColor": "#9ca3af",
+        "borderWidth": 2
+      }
+    ]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "legend": {
+        "display": true,
+        "position": "bottom"
+      },
+      "title": {
+        "display": true,
+        "text": "Calidad del diseño"
+      }
+    },
+    "scales": {
+      "r": {
+        "min": 0,
+        "max": 100,
+        "ticks": {
+          "stepSize": 20
+        }
+      }
+    }
+  }
+}

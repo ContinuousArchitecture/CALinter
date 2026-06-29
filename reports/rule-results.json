@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "source": "artifact/source/design.archimate",
+    "generatedAt": "2026-06-29T16:00:00.000Z"
+  },
+  "rules": [
+    {
+      "ruleId": "carpetas_obligatorias_regla",
+      "dimension": "Estructura",
+      "severity": "error",
+      "scope": "collection",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 2,
+      "passed": 2,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collection": "folders",
+          "recordIds": ["folder-as-is", "folder-to-be"]
+        }
+      ]
+    },
+    {
+      "ruleId": "nomenclatura_regla",
+      "dimension": "Nomenclatura",
+      "severity": "warning",
+      "scope": "each",
+      "status": "warning",
+      "score": 82,
+      "evaluated": 14,
+      "passed": 13,
+      "failed": 1,
+      "findings": [
+        {
+          "id": "finding-001",
+          "collection": "elements",
+          "recordId": "el-012",
+          "field": "name",
+          "value": "employee data management",
+          "message": "El nombre debe comenzar con mayúscula.",
+          "evidence": {
+            "rule": "^[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9& ()\\-\\/]+$",
+            "expected": "cumple regex",
+            "actual": "no cumple"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "collection": "elements",
+          "recordIds": ["el-001", "el-002", "el-012"]
+        }
+      ]
+    },
+    {
+      "ruleId": "vistas_vacias_regla",
+      "dimension": "Legibilidad",
+      "severity": "warning",
+      "scope": "each",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 3,
+      "passed": 3,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collection": "views",
+          "recordIds": ["view-001", "view-002", "view-003"]
+        }
+      ]
+    },
+    {
+      "ruleId": "referencias_rotas_regla",
+      "dimension": "Integridad",
+      "severity": "error",
+      "scope": "crossCollection",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 16,
+      "passed": 16,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collections": ["diagramObjects", "diagramConnections", "elements", "relationships"],
+          "checkedReferences": 16
+        }
+      ]
+    },
+    {
+      "ruleId": "abuso_association_regla",
+      "dimension": "Relaciones",
+      "severity": "warning",
+      "scope": "collection",
+      "status": "warning",
+      "score": 65,
+      "evaluated": 20,
+      "passed": 13,
+      "failed": 7,
+      "findings": [
+        {
+          "id": "finding-002",
+          "collection": "relationships",
+          "recordId": "rel-014",
+          "field": "type",
+          "value": "archimate:AssociationRelationship",
+          "message": "El modelo usa demasiadas relaciones Association.",
+          "evidence": {
+            "ratio": 35,
+            "threshold": 35
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "collection": "relationships",
+          "associationCount": 7,
+          "totalCount": 20
+        }
+      ]
+    },
+    {
+      "ruleId": "exceso_elementos_por_vista_regla",
+      "dimension": "Legibilidad",
+      "severity": "warning",
+      "scope": "each",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 3,
+      "passed": 3,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collection": "views",
+          "recordIds": ["view-001", "view-002", "view-003"]
+        }
+      ]
+    },
+    {
+      "ruleId": "exceso_relaciones_por_vista_regla",
+      "dimension": "Legibilidad",
+      "severity": "warning",
+      "scope": "each",
+      "status": "pass",
+      "score": 100,
+      "evaluated": 3,
+      "passed": 3,
+      "failed": 0,
+      "findings": [],
+      "evidence": [
+        {
+          "collection": "views",
+          "recordIds": ["view-001", "view-002", "view-003"]
+        }
+      ]
+    },
+    {
+      "ruleId": "elementos_aislados_regla",
+      "dimension": "Trazabilidad",
+      "severity": "warning",
+      "scope": "crossCollection",
+      "status": "warning",
+      "score": 58,
+      "evaluated": 14,
+      "passed": 8,
+      "failed": 6,
+      "findings": [
+        {
+          "id": "finding-003",
+          "collection": "elements",
+          "recordId": "el-009",
+          "field": "id",
+          "value": "el-009",
+          "message": "Existen elementos aislados sin relación con otros conceptos del modelo.",
+          "evidence": {
+            "linked": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "collection": "elements",
+          "isolatedCount": 6,
+          "totalCount": 14
+        }
+      ]
+    }
+  ]
+}

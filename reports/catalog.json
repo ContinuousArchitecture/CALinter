@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "source": "artifact/source/design.archimate",
+    "adapterVersion": "0.0.3",
+    "format": "archi-native",
+    "generatedAt": "2026-06-29T16:00:00.000Z",
+    "modelId": "model-001",
+    "modelName": "Agile Manifesto"
+  },
+  "folders": [
+    {
+      "id": "folder-views",
+      "name": "Views",
+      "type": "views",
+      "parentId": null,
+      "parentName": null,
+      "path": "/Views"
+    }
+  ],
+  "elements": [
+    {
+      "id": "el-001",
+      "name": "Customer",
+      "type": "archimate:BusinessActor",
+      "folderId": "folder-business",
+      "folderName": "Business",
+      "sourceFile": "artifact/source/design.archimate"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel-001",
+      "name": "",
+      "type": "archimate:ServingRelationship",
+      "source": "el-001",
+      "target": "el-002",
+      "folderId": "folder-relations",
+      "folderName": "Relations"
+    }
+  ],
+  "views": [
+    {
+      "id": "view-001",
+      "name": "TO-BE Application View",
+      "type": "archimate:ArchimateDiagramModel",
+      "folderId": "folder-views",
+      "folderName": "Views",
+      "elementCount": 12,
+      "connectionCount": 8
+    }
+  ],
+  "diagramObjects": [
+    {
+      "id": "obj-001",
+      "viewId": "view-001",
+      "elementRef": "el-001",
+      "x": 36,
+      "y": 60,
+      "width": 180,
+      "height": 55
+    }
+  ],
+  "diagramConnections": [
+    {
+      "id": "conn-001",
+      "viewId": "view-001",
+      "relationshipRef": "rel-001",
+      "source": "obj-001",
+      "target": "obj-002",
+      "bendpoints": []
+    }
+  ]
+}

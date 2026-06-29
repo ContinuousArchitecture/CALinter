@@ -1,0 +1,182 @@
+archi_rules_dsl: "0.0.3"
+
+metadata:
+  title: Reglas ejecutables ArchiMate
+  author: Miguel Céspedes
+  description: Define reglas sobre el catálogo normalizado generado desde .archimate.
+
+operators:
+  - equals
+  - notEquals
+  - contains
+  - containsAll
+  - regex
+  - greaterThan
+  - greaterThanOrEqual
+  - lessThan
+  - lessThanOrEqual
+  - exists
+  - notEmpty
+  - referencesExist
+  - percentageLessThanOrEqual
+
+rules:
+  carpetas_obligatorias_regla:
+    dimension: Estructura
+    severity: error
+    source:
+      collection: folders
+      filter:
+        field: parentName
+        equals: Views
+    scope: collection
+    assert:
+      field: name
+      operator: containsAll
+      values:
+        - AS-IS
+        - TO-BE
+    scoring:
+      mode: binary
+      pass: 100
+      fail: 0
+    failureMessage: La sección Views debe contener las carpetas AS-IS y TO-BE.
+
+  nomenclatura_regla:
+    dimension: Nomenclatura
+    severity: warning
+    source:
+      collection: elements
+      filter:
+        field: name
+        notEmpty: true
+    scope: each
+    assert:
+      field: name
+      operator: regex
+      pattern: "^[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9& ()\\-\\/]+$"
+    scoring:
+      mode: percentage
+      passThreshold: 95
+      warningThreshold: 80
+      failBelow: 80
+    failureMessage: El nombre debe ser claro, legible y comenzar con mayúscula.
+
+  vistas_vacias_regla:
+    dimension: Legibilidad
+    severity: warning
+    source:
+      collection: views
+    scope: each
+    assert:
+      field: elementCount
+      operator: greaterThan
+      value: 0
+    scoring:
+      mode: percentage
+      passThreshold: 100
+      warningThreshold: 90
+      failBelow: 90
+    failureMessage: Existen vistas vacías que no aportan valor.
+
+  referencias_rotas_regla:
+    dimension: Integridad
+    severity: error
+    source:
+      collections:
+        - diagramObjects
+        - diagramConnections
+        - elements
+        - relationships
+    scope: crossCollection
+    assert:
+      operator: referencesExist
+      checks:
+        - from: diagramObjects.elementRef
+          in: elements.id
+        - from: diagramConnections.relationshipRef
+          in: relationships.id
+    scoring:
+      mode: binary
+      pass: 100
+      fail: 0
+    failureMessage: Existen referencias rotas en objetos o conexiones.
+
+  abuso_association_regla:
+    dimension: Relaciones
+    severity: warning
+    source:
+      collection: relationships
+    scope: collection
+    metric:
+      name: associationRatio
+      numerator:
+        field: type
+        contains: AssociationRelationship
+      denominator:
+        count: all
+    assert:
+      operator: percentageLessThanOrEqual
+      value: 35
+    scoring:
+      mode: threshold
+      passAtOrBelow: 20
+      warningAtOrBelow: 35
+      failAbove: 35
+    failureMessage: El modelo usa demasiadas relaciones Association.
+
+  exceso_elementos_por_vista_regla:
+    dimension: Legibilidad
+    severity: warning
+    source:
+      collection: views
+    scope: each
+    assert:
+      field: elementCount
+      operator: lessThanOrEqual
+      value: 30
+    scoring:
+      mode: percentage
+      passThreshold: 90
+      warningThreshold: 70
+      failBelow: 70
+    failureMessage: La vista contiene demasiados elementos.
+
+  exceso_relaciones_por_vista_regla:
+    dimension: Legibilidad
+    severity: warning
+    source:
+      collection: views
+    scope: each
+    assert:
+      field: connectionCount
+      operator: lessThanOrEqual
+      value: 45
+    scoring:
+      mode: percentage
+      passThreshold: 90
+      warningThreshold: 70
+      failBelow: 70
+    failureMessage: La vista contiene demasiadas relaciones visibles.
+
+  elementos_aislados_regla:
+    dimension: Trazabilidad
+    severity: warning
+    source:
+      collections:
+        - elements
+        - relationships
+    scope: crossCollection
+    assert:
+      operator: referencesExist
+      checks:
+        - from: elements.id
+          in:
+            - relationships.source
+            - relationships.target
+    scoring:
+      mode: percentage
+      passThreshold: 85
+      warningThreshold: 60
+      failBelow: 60
+    failureMessage: Existen elementos aislados sin relación con otros conceptos del modelo.

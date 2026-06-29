@@ -1,0 +1,90 @@
+archi_adapter_dsl: "0.0.3"
+
+metadata:
+  title: Adaptador XML para archivos .archimate de Archi
+  author: Miguel Céspedes
+  description: Extrae carpetas, elementos, relaciones, vistas y conexiones desde un archivo .archimate.
+
+input:
+  format: archi-native
+  type: xml
+
+namespaces:
+  archimate: "http://www.archimatetool.com/archimate"
+  xsi: "http://www.w3.org/2001/XMLSchema-instance"
+
+extractors:
+  folders:
+    xpath: "//*[local-name()='folder']"
+    fields:
+      id: "@id"
+      name: "@name"
+      type: "@type"
+      parentId: "../@id"
+      parentName: "../@name"
+      path:
+        strategy: ancestorNames
+        separator: "/"
+
+  elements:
+    xpath: "//*[local-name()='element' and @id and @xsi:type]"
+    excludeTypeContains:
+      - Relationship
+      - Diagram
+      - View
+    allowedTypeContains:
+      - Business
+      - Application
+      - Technology
+      - Motivation
+      - Strategy
+      - Implementation
+    fields:
+      id: "@id"
+      name: "@name"
+      type: "@xsi:type"
+      folderName: "ancestor::*[local-name()='folder'][1]/@name"
+      folderId: "ancestor::*[local-name()='folder'][1]/@id"
+
+  relationships:
+    xpath: "//*[local-name()='element' and @xsi:type and contains(@xsi:type, 'Relationship')]"
+    fields:
+      id: "@id"
+      name: "@name"
+      type: "@xsi:type"
+      source: "@source"
+      target: "@target"
+      folderName: "ancestor::*[local-name()='folder'][1]/@name"
+      folderId: "ancestor::*[local-name()='folder'][1]/@id"
+
+  views:
+    xpath: "//*[local-name()='element' and @xsi:type and (contains(@xsi:type, 'Diagram') or contains(@xsi:type, 'View'))]"
+    fields:
+      id: "@id"
+      name: "@name"
+      type: "@xsi:type"
+      folderName: "ancestor::*[local-name()='folder'][1]/@name"
+      folderId: "ancestor::*[local-name()='folder'][1]/@id"
+      elementCount: "count(.//*[@archimateElement])"
+      connectionCount: "count(.//*[@relationship])"
+
+  diagramObjects:
+    xpath: "//*[@archimateElement]"
+    fields:
+      id: "@id"
+      viewId: "ancestor::*[@xsi:type and (contains(@xsi:type, 'Diagram') or contains(@xsi:type, 'View'))][1]/@id"
+      elementRef: "@archimateElement"
+      x: "@x"
+      y: "@y"
+      width: "@width"
+      height: "@height"
+
+  diagramConnections:
+    xpath: "//*[@relationship]"
+    fields:
+      id: "@id"
+      viewId: "ancestor::*[@xsi:type and (contains(@xsi:type, 'Diagram') or contains(@xsi:type, 'View'))][1]/@id"
+      relationshipRef: "@relationship"
+      source: "@source"
+      target: "@target"
+      bendpoints: "bendpoint"
