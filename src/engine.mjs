@@ -186,12 +186,14 @@ async function renderDashboardSectionFinal({ validators, score, passCount, warnC
     const [complianceUrl, distributionUrl, dimensionsUrl] = await Promise.all([
       createQuickChartUrl(buildComplianceChartConfig({ score, failCount, warnCount }), { width: 220, height: 160 }),
       createQuickChartUrl(buildDistributionChartConfig({ passCount, warnCount, failCount }), { width: 260, height: 160 }),
-      createQuickChartUrl(buildDimensionsChartConfig(buildDimensionSummaries(validators)), { width: 300, height: 180 }),
+      createQuickChartUrl(buildDimensionsChartConfig(buildDimensionSummaries(validators)), { width: 300, height: 160 }),
     ]);
 
     return {
       lines: [
-        `| <img src="${complianceUrl}" width="220" alt="Cumplimiento general"> | <img src="${distributionUrl}" width="260" alt="Distribución de resultados"> | <img src="${dimensionsUrl}" width="300" alt="Calidad por dimensión"> |`,
+        '## Dashboard',
+        '',
+        `| <img src="${complianceUrl}" width="220" height="160" alt="Cumplimiento general"> | <img src="${distributionUrl}" width="260" height="160" alt="Distribución de resultados"> | <img src="${dimensionsUrl}" width="300" height="160" alt="Calidad por dimensión"> |`,
         '',
       ],
       systemIssueLines: [],
@@ -199,6 +201,8 @@ async function renderDashboardSectionFinal({ validators, score, passCount, warnC
   } catch (error) {
     return {
       lines: [
+        '## Dashboard',
+        '',
         '```text',
         `Cumplimiento: ${formatScore(score)}`,
         `Resultado: ${resultLabel}`,
