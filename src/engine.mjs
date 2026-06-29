@@ -1287,8 +1287,6 @@ function buildResponse(repoRoot, manifestPath, manifest, artifact, validators) {
   return {
     manifest: manifestPath,
     repoRoot,
-    summaryTemplatePath: manifest.summaryTemplatePath,
-    warningTemplatePath: manifest.warningTemplatePath,
     artifact,
     status: lintStatus,
     systemStatus: 'PASS',

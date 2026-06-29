@@ -7,9 +7,6 @@ artifact:
     path: artifact/source/*.archimate
     mode: single-file
 
-summaryTemplatePath: summary-template.md
-warningTemplatePath: warning-template.md
-
 orderOfExecution:
   - archi-consistency-dsl.yaml
   - archi_style_dsl.yaml
