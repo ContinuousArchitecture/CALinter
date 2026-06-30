@@ -19,116 +19,7 @@ if (process.env.CI !== 'true') {
 }
 
 function markdownToHtml(input) {
-  const lines = String(input ?? '').replace(/\r\n/g, '\n').split('\n');
-  const out = [];
-  let inCode = false;
-  let codeBuffer = [];
-  let inList = false;
-  let inQuote = false;
-
-  const flushCode = () => {
-    if (!inCode) return;
-    out.push(`<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`);
-    codeBuffer = [];
-    inCode = false;
-  };
-
-  const closeList = () => {
-    if (inList) {
-      out.push('</ul>');
-      inList = false;
-    }
-  };
-
-  const closeQuote = () => {
-    if (inQuote) {
-      out.push('</blockquote>');
-      inQuote = false;
-    }
-  };
-
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd();
-
-    if (line.startsWith('```')) {
-      if (inCode) {
-        flushCode();
-      } else {
-        closeList();
-        closeQuote();
-        inCode = true;
-      }
-      continue;
-    }
-
-    if (inCode) {
-      codeBuffer.push(line);
-      continue;
-    }
-
-    if (!line.trim()) {
-      closeList();
-      closeQuote();
-      out.push('<div class="spacer"></div>');
-      continue;
-    }
-
-    if (line.startsWith('# ')) {
-      closeList();
-      closeQuote();
-      out.push(`<h1>${renderInline(line.slice(2))}</h1>`);
-      continue;
-    }
-
-    if (line.startsWith('## ')) {
-      closeList();
-      closeQuote();
-      out.push(`<h2>${renderInline(line.slice(3))}</h2>`);
-      continue;
-    }
-
-    if (line.startsWith('### ')) {
-      closeList();
-      closeQuote();
-      out.push(`<h3>${renderInline(line.slice(4))}</h3>`);
-      continue;
-    }
-
-    if (line.startsWith('> ')) {
-      closeList();
-      if (!inQuote) {
-        out.push('<blockquote>');
-        inQuote = true;
-      }
-      out.push(`<p>${renderInline(line.slice(2))}</p>`);
-      continue;
-    }
-
-    if (line.startsWith('- ')) {
-      closeQuote();
-      if (!inList) {
-        out.push('<ul>');
-        inList = true;
-      }
-      out.push(`<li>${renderInline(line.slice(2))}</li>`);
-      continue;
-    }
-
-    if (line.trimStart().startsWith('<')) {
-      closeList();
-      closeQuote();
-      out.push(line);
-      continue;
-    }
-
-    closeList();
-    closeQuote();
-    out.push(`<p>${renderInline(line)}</p>`);
-  }
-
-  flushCode();
-  closeList();
-  closeQuote();
+  const body = renderMarkdownBody(input);
 
   return `<!doctype html>
 <html lang="es">
@@ -144,7 +35,6 @@ function markdownToHtml(input) {
       --card-border: #d0d7de;
       --card-shadow: 0 8px 24px rgba(140, 149, 159, .12);
       --text: #1f2328;
-      --muted: #656d76;
       --heading-border: #d0d7de;
       --blockquote-bg: #fff8c5;
       --blockquote-border: #d4a72c;
@@ -158,6 +48,8 @@ function markdownToHtml(input) {
       --button-text: #24292f;
       --button-border: #d0d7de;
       --focus-ring: #0969da;
+      --details-bg: #f6f8fa;
+      --details-border: #d0d7de;
     }
     html[data-theme="dark"] {
       color-scheme: dark;
@@ -166,7 +58,6 @@ function markdownToHtml(input) {
       --card-border: #30363d;
       --card-shadow: 0 8px 24px rgba(1, 4, 9, .45);
       --text: #c9d1d9;
-      --muted: #8b949e;
       --heading-border: #30363d;
       --blockquote-bg: #2d2300;
       --blockquote-border: #d4a72c;
@@ -180,6 +71,8 @@ function markdownToHtml(input) {
       --button-text: #c9d1d9;
       --button-border: #30363d;
       --focus-ring: #58a6ff;
+      --details-bg: #161b22;
+      --details-border: #30363d;
     }
     body { font-family: Segoe UI, Arial, sans-serif; margin: 0; background: var(--page-bg); color: var(--text); }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
@@ -199,6 +92,8 @@ function markdownToHtml(input) {
     h3 { font-size: 1.05rem; }
     p, li { line-height: 1.55; }
     blockquote { margin: 1rem 0; padding: .75rem 1rem; border-left: 4px solid var(--blockquote-border); background: var(--blockquote-bg); color: var(--blockquote-text); }
+    .gh-alert { margin: 1rem 0; padding: .75rem 1rem; border-left: 4px solid var(--blockquote-border); background: var(--blockquote-bg); color: var(--blockquote-text); border-radius: 12px; }
+    .gh-alert-title { font-weight: 700; margin-bottom: .5rem; text-transform: uppercase; letter-spacing: .04em; font-size: .85em; }
     pre { margin: 1rem 0; padding: 1rem; background: var(--code-bg); color: var(--code-text); overflow: auto; border-radius: 12px; }
     code { font-family: Consolas, monospace; font-size: .95em; }
     ul { padding-left: 1.5rem; }
@@ -206,6 +101,8 @@ function markdownToHtml(input) {
     table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
     th, td { border: 1px solid var(--table-border); padding: .5rem .75rem; text-align: left; vertical-align: top; }
     th { background: var(--table-header-bg); }
+    details { margin: 1rem 0; padding: .75rem 1rem; border: 1px solid var(--details-border); border-radius: 12px; background: var(--details-bg); }
+    summary { cursor: pointer; font-weight: 600; }
   </style>
   <script>
     (() => {
@@ -221,7 +118,7 @@ function markdownToHtml(input) {
 <body>
   <div class="wrap"><div class="card">
 <div class="toolbar"><button class="theme-toggle" type="button" id="theme-toggle" aria-pressed="false" aria-label="Cambiar tema"></button></div>
-${out.join('\n')}
+${body}
   </div></div>
   <script>
     (() => {
@@ -242,6 +139,128 @@ ${out.join('\n')}
   </script>
 </body>
 </html>`;
+}
+
+function renderMarkdownBody(input) {
+  const lines = String(input ?? '').replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+  let inCode = false;
+  let codeBuffer = [];
+  let inList = false;
+
+  const flushCode = () => {
+    if (!inCode) return;
+    out.push(`<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`);
+    codeBuffer = [];
+    inCode = false;
+  };
+
+  const closeList = () => {
+    if (inList) {
+      out.push('</ul>');
+      inList = false;
+    }
+  };
+
+  while (i < lines.length) {
+    const rawLine = lines[i];
+    const line = rawLine.trimEnd();
+
+    if (line.startsWith('```')) {
+      if (inCode) {
+        flushCode();
+      } else {
+        closeList();
+        inCode = true;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (inCode) {
+      codeBuffer.push(line);
+      i += 1;
+      continue;
+    }
+
+    if (!line.trim()) {
+      closeList();
+      out.push('<div class="spacer"></div>');
+      i += 1;
+      continue;
+    }
+
+    if (line.startsWith('# ')) {
+      closeList();
+      out.push(`<h1>${renderInline(line.slice(2))}</h1>`);
+      i += 1;
+      continue;
+    }
+
+    if (line.startsWith('## ')) {
+      closeList();
+      out.push(`<h2>${renderInline(line.slice(3))}</h2>`);
+      i += 1;
+      continue;
+    }
+
+    if (line.startsWith('### ')) {
+      closeList();
+      out.push(`<h3>${renderInline(line.slice(4))}</h3>`);
+      i += 1;
+      continue;
+    }
+
+    if (line.trimStart().startsWith('>')) {
+      closeList();
+      const quoteLines = [];
+
+      while (i < lines.length && String(lines[i] ?? '').trimStart().startsWith('>')) {
+        quoteLines.push(String(lines[i] ?? '').replace(/^\s*>\s?/, ''));
+        i += 1;
+      }
+
+      const alertMatch = String(quoteLines.find((value) => String(value ?? '').trim() !== '') ?? '')
+        .trim()
+        .match(/^\[!(WARNING|TIP|CAUTION|NOTE|IMPORTANT)\]$/i);
+
+      if (alertMatch) {
+        const alertType = alertMatch[1].toLowerCase();
+        const bodyLines = quoteLines.slice(1).join('\n').replace(/^\n+/, '');
+        out.push(`<div class="gh-alert gh-alert-${alertType}"><div class="gh-alert-title">${alertType.toUpperCase()}</div>${renderMarkdownBody(bodyLines)}</div>`);
+      } else {
+        out.push(`<blockquote>${renderMarkdownBody(quoteLines.join('\n'))}</blockquote>`);
+      }
+      continue;
+    }
+
+    if (line.startsWith('- ')) {
+      if (!inList) {
+        out.push('<ul>');
+        inList = true;
+      }
+      out.push(`<li>${renderInline(line.slice(2))}</li>`);
+      i += 1;
+      continue;
+    }
+
+    if (line.trimStart().startsWith('<')) {
+      closeList();
+      out.push(line);
+      i += 1;
+      continue;
+    }
+
+    closeList();
+    out.push(`<p>${renderInline(line)}</p>`);
+    i += 1;
+  }
+
+  flushCode();
+  closeList();
+
+  return out.join('\n');
 }
 
 function renderInline(value) {
