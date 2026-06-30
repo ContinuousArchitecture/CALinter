@@ -395,11 +395,12 @@ function getRuleActionMessage(rule) {
 }
 
 function renderValidationMapSection(summary) {
+  const sections = [...summary.treeSections, ...summary.auxSections];
   const lines = ['```text', 'ArchiMate Model'];
 
-  summary.treeSections.forEach((section, index) => {
-    const branch = index === summary.treeSections.length - 1 ? '└─' : '├─';
-    const padding = index === summary.treeSections.length - 1 ? '   ' : '│  ';
+  sections.forEach((section, index) => {
+    const branch = index === sections.length - 1 ? '└─' : '├─';
+    const padding = index === sections.length - 1 ? '   ' : '│  ';
     const rules = summary.sectionRules.get(section) ?? [];
 
     lines.push(`${branch} ${section}`);
@@ -415,22 +416,6 @@ function renderValidationMapSection(summary) {
   });
 
   lines.push('```');
-  return lines;
-}
-
-function renderSupplementalSectionMap(summary, sectionName) {
-  const rules = summary.sectionRules.get(sectionName) ?? [];
-  const lines = [`### ${sectionName}`, ''];
-
-  if (rules.length === 0) {
-    lines.push('Sin reglas aplicadas.');
-    return lines;
-  }
-
-  for (const rule of rules) {
-    lines.push(`- ${getVisibleRuleStatus(rule)} · \`${escapeInlineCode(rule.ruleId)}\``);
-  }
-
   return lines;
 }
 
@@ -596,10 +581,6 @@ async function renderSummaryMarkdownV03(summary) {
   lines.push('## Mapa de validación');
   lines.push('');
   lines.push(...renderValidationMapSection(summary));
-  lines.push('');
-  lines.push(...renderSupplementalSectionMap(summary, 'Model Integrity'));
-  lines.push('');
-  lines.push(...renderSupplementalSectionMap(summary, 'General'));
   lines.push('');
 
   lines.push('## Reporte de reglas');
