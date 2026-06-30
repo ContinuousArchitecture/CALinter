@@ -156,6 +156,9 @@ function buildContractIssues(contractRule, quickchartIssues) {
 async function renderSummaryMarkdownV03(summary) {
   const lines = ['# Calidad del diseño', ''];
 
+  lines.push('## Dashboard');
+  lines.push('');
+
   if (summary.contractIssues.length > 0) {
     lines.push('> [!CAUTION]');
     lines.push('> **ERROR DE CONTRATO**');
@@ -175,15 +178,15 @@ async function renderSummaryMarkdownV03(summary) {
     lines.push('');
   }
 
-  lines.push('## Resumen');
-  lines.push('');
-  lines.push('| Estado general | Score | Cobertura | PASS | WARNING | FAIL | NOT IMPLEMENTED | Contrato |');
-  lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: | --- |');
-  lines.push(`| ${summary.generalState} | ${summary.scoreLabel} | ${summary.coverage} | ${summary.counts.pass} | ${summary.counts.warning} | ${summary.counts.fail} | ${summary.counts.notimplemented} | ${summary.contractOk ? 'OK' : 'ERROR'} |`);
+  lines.push('| Indicador | Resultado |');
+  lines.push('| --- | --- |');
+  lines.push(`| Estado | ${summary.generalState} |`);
+  lines.push(`| Score | ${summary.scoreLabel} |`);
+  lines.push(`| Cobertura | ${summary.coverage} dimensiones |`);
+  lines.push(`| Reglas | ${summary.counts.pass} PASS · ${summary.counts.warning} WARNING · ${summary.counts.fail} FAIL · ${summary.counts.notimplemented} NOT IMPLEMENTED |`);
+  lines.push(`| Contrato | ${summary.contractOk ? 'OK' : 'ERROR'} |`);
   lines.push('');
 
-  lines.push('## Radar');
-  lines.push('');
   if (summary.radarTrusted && summary.quickchartConfig) {
     try {
       const radarUrl = await createQuickChartUrl(summary.quickchartConfig, { width: 520, height: 360 });
@@ -192,13 +195,15 @@ async function renderSummaryMarkdownV03(summary) {
         lines.push(`> Radar parcial: omite ${summary.omittedDimensions.join(', ')}.`);
         lines.push('');
       }
-      lines.push(`<img src="${radarUrl}" alt="Radar de calidad" width="520" height="360">`);
+      lines.push(`![Radar de calidad](${radarUrl})`);
       lines.push('');
       lines.push('<small>Fuente: `reports/quickchart-radar.json`</small>');
+      lines.push('');
     } catch (error) {
       lines.push('> [!CAUTION]');
       lines.push('> No se pudo generar el radar desde `reports/quickchart-radar.json`.');
       lines.push(`> **Detalle:** ${normalizeInlineText(error?.message ?? 'QuickChart no respondió.')}`);
+      lines.push('');
     }
   } else {
     lines.push('> [!CAUTION]');
@@ -209,118 +214,79 @@ async function renderSummaryMarkdownV03(summary) {
         lines.push(`> - ${normalizeInlineText(issue)}`);
       }
     }
-  }
-
-  lines.push('');
-  lines.push('## Dimensiones');
-  lines.push('');
-  lines.push('| Dimensión | Score | Target | Estado | Reglas evaluadas |');
-  lines.push('| --- | ---: | ---: | --- | ---: |');
-  for (const dimension of summary.qualityScore.dimensions ?? []) {
-    lines.push(`| ${dimension.label} | ${formatDimensionScore(dimension.score)} | ${formatDimensionScore(dimension.target)} | ${formatDimensionState(dimension.status)} | ${formatDimensionScore(dimension.includedRules)} |`);
-  }
-  lines.push('');
-
-  lines.push('## Observaciones');
-  lines.push('');
-  const warningsByDimension = groupRulesByDimension(summary.ruleResults.filter((rule) => String(rule.status ?? '').toLowerCase() === 'warning'));
-
-  if (warningsByDimension.size === 0) {
-    lines.push('> [!TIP]');
-    lines.push('> No hay observaciones WARNING.');
     lines.push('');
-  } else {
-    for (const [dimension, rules] of warningsByDimension) {
-      lines.push(`<details>`);
-      lines.push(`<summary>${dimension} (${rules.length})</summary>`);
+  }
+
+  lines.push('| Dimensión | Score | Target | Estado |');
+  lines.push('| --- | ---: | ---: | --- |');
+  for (const dimension of summary.qualityScore.dimensions ?? []) {
+    lines.push(`| ${dimension.label} | ${formatDimensionScore(dimension.score)} | ${formatDimensionScore(dimension.target)} | ${formatDimensionState(dimension.status)} |`);
+  }
+  lines.push('');
+
+  lines.push('## Reporte de reglas');
+  lines.push('');
+
+  const groupedRules = groupRulesByStatus(summary.ruleResults);
+  for (const status of ['fail', 'warning', 'notimplemented', 'pass']) {
+    const rules = groupedRules.get(status) ?? [];
+    lines.push(`### ${formatRuleGroupHeading(status)}`);
+    lines.push('');
+
+    if (rules.length === 0) {
+      lines.push('_Sin reglas para mostrar._');
       lines.push('');
-      lines.push('| Regla | Severidad | Score | Evaluadas | Pasadas | Falladas | Hallazgos | Mensaje |');
-      lines.push('| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |');
-      for (const rule of rules) {
-        lines.push(`| \`${escapeInlineCode(rule.ruleId)}\` | ${normalizeInlineText(rule.severity)} | ${formatDimensionScore(rule.score)} | ${formatDimensionScore(rule.evaluated)} | ${formatDimensionScore(rule.passed)} | ${formatDimensionScore(rule.failed)} | ${formatDimensionScore(rule.findings?.length ?? 0)} | ${normalizeInlineText(getFailureMessage(rule))} |`);
+      continue;
+    }
+
+    lines.push('| Regla | Dimensión | Severidad | Score | Evaluadas | Pasadas | Falladas | Hallazgos | Mensaje |');
+    lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |');
+    for (const rule of rules) {
+      lines.push(`| \`${escapeInlineCode(rule.ruleId)}\` | ${normalizeInlineText(rule.dimension ?? 'General')} | ${normalizeInlineText(rule.severity ?? 'n/a')} | ${formatDimensionScore(rule.score)} | ${formatDimensionScore(rule.evaluated)} | ${formatDimensionScore(rule.passed)} | ${formatDimensionScore(rule.failed)} | ${formatDimensionScore(rule.findings?.length ?? 0)} | ${normalizeInlineText(getRuleMessage(rule))} |`);
+    }
+    lines.push('');
+
+    for (const rule of rules) {
+      if ((rule.findings ?? []).length === 0) {
+        continue;
+      }
+
+      lines.push('<details>');
+      lines.push(`<summary>Ver hallazgos de ${escapeInlineCode(rule.ruleId)}</summary>`);
+      lines.push('');
+      lines.push('| ID | Campo | Valor | Mensaje |');
+      lines.push('| --- | --- | --- | --- |');
+      for (const finding of rule.findings) {
+        lines.push(`| \`${truncateInline(finding.recordId ?? 'n/a')}\` | ${normalizeInlineText(finding.field ?? 'n/a')} | ${normalizeInlineText(truncateInline(formatFindingValue(finding.value)))} | ${normalizeInlineText(finding.message ?? 'n/a')} |`);
       }
       lines.push('');
-
-      for (const rule of rules) {
-        if ((rule.findings ?? []).length === 0) {
-          continue;
-        }
-
-        lines.push(`<details>`);
-        lines.push(`<summary>${rule.ruleId} (${rule.findings.length} hallazgos)</summary>`);
-        lines.push('');
-        lines.push('| recordId | field | value | message |');
-        lines.push('| --- | --- | --- | --- |');
-        for (const finding of rule.findings) {
-          lines.push(`| ${normalizeInlineText(finding.recordId ?? 'n/a')} | ${normalizeInlineText(finding.field ?? 'n/a')} | ${normalizeInlineText(formatFindingValue(finding.value))} | ${normalizeInlineText(finding.message ?? 'n/a')} |`);
-        }
-        lines.push('');
-        lines.push('</details>');
-        lines.push('');
-      }
-
       lines.push('</details>');
       lines.push('');
     }
   }
 
-  lines.push('## Reglas cumplidas');
-  lines.push('');
-  lines.push('<details>');
-  lines.push('<summary>Ver reglas cumplidas</summary>');
-  lines.push('');
-  const passByDimension = groupRulesByDimension(summary.ruleResults.filter((rule) => String(rule.status ?? '').toLowerCase() === 'pass'));
-  if (passByDimension.size === 0) {
-    lines.push('_Sin reglas cumplidas para mostrar._');
-  } else {
-    for (const [dimension, rules] of passByDimension) {
-      lines.push(`### ${dimension}`);
-      lines.push('');
-      for (const rule of rules) {
-        lines.push(`- \`${escapeInlineCode(rule.ruleId)}\` — ${normalizeInlineText(rule.message ?? rule.reason ?? 'Cumple.')}`);
-      }
-      lines.push('');
-    }
-  }
-  lines.push('</details>');
-  lines.push('');
-
-  lines.push('## Consistencia del contrato');
-  lines.push('');
-  if (summary.contractIssues.length === 0) {
-    lines.push('> [!TIP]');
-    lines.push('> **Contrato OK**');
-    lines.push('>');
-    lines.push('> `contract_consistency_check` confirma que quality-score.json y quickchart-radar.json son consistentes.');
-  } else {
-    lines.push('> [!CAUTION]');
-    lines.push('> **Contrato inconsistente**');
-    lines.push('>');
-    for (const issue of summary.contractIssues) {
-      lines.push(`> - ${normalizeInlineText(issue)}`);
-    }
-  }
-
-  lines.push('');
-  if (summary.contractRule) {
-    lines.push('| Regla | Estado | Score | Evaluadas | Pasadas | Falladas |');
-    lines.push('| --- | --- | ---: | ---: | ---: | ---: |');
-    lines.push(`| \`${escapeInlineCode(summary.contractRule.ruleId)}\` | ${normalizeInlineText(summary.contractRule.status)} | ${formatDimensionScore(summary.contractRule.score)} | ${formatDimensionScore(summary.contractRule.evaluated)} | ${formatDimensionScore(summary.contractRule.passed)} | ${formatDimensionScore(summary.contractRule.failed)} |`);
-  }
-
   return lines.join('\n').trimEnd();
 }
 
-function groupRulesByDimension(rules) {
+function groupRulesByStatus(rules) {
   return rules.reduce((groups, rule) => {
-    const key = String(rule.dimension ?? 'General');
-    if (!groups.has(key)) {
-      groups.set(key, []);
+    const status = String(rule.status ?? 'unknown').toLowerCase();
+    if (!groups.has(status)) {
+      groups.set(status, []);
     }
 
-    groups.get(key).push(rule);
+    groups.get(status).push(rule);
     return groups;
   }, new Map());
+}
+
+function formatRuleGroupHeading(status) {
+  const value = String(status ?? '').toLowerCase();
+  if (value === 'fail') return 'FAIL';
+  if (value === 'warning') return 'WARNING';
+  if (value === 'notimplemented') return 'NOT IMPLEMENTED';
+  if (value === 'pass') return 'PASS';
+  return value.toUpperCase();
 }
 
 function formatDimensionScore(value) {
@@ -356,6 +322,32 @@ function getFailureMessage(rule) {
   }
 
   return 'n/a';
+}
+
+function getRuleMessage(rule) {
+  const failureMessage = getFailureMessage(rule);
+  if (failureMessage !== 'n/a') {
+    return failureMessage;
+  }
+
+  if (String(rule.status ?? '').toLowerCase() === 'pass') {
+    return 'Cumple.';
+  }
+
+  if (String(rule.status ?? '').toLowerCase() === 'notimplemented') {
+    return 'Regla declarada pero aún no soportada por el motor.';
+  }
+
+  return rule.reason ?? rule.message ?? 'n/a';
+}
+
+function truncateInline(value, maxLength = 40) {
+  const text = String(value ?? '');
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1)}…`;
 }
 
 function formatFindingValue(value) {

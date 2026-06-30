@@ -96,6 +96,7 @@ function readJson(filePath) {
 function assertSummaryShape(summaryMarkdownText) {
   const requiredLabels = ['Estructura', 'Nomenclatura', 'Integridad', 'Relaciones', 'Trazabilidad', 'Legibilidad'];
   const legacyLabels = ['XML', 'Identidad', 'Estilo', 'Vistas'];
+  const forbiddenSections = ['## Observaciones', '## Reglas cumplidas', '## Consistencia del contrato', '## Contrato'];
 
   if (!summaryMarkdownText.includes('Evaluación parcial')) {
     throw new Error('Expected summary to show Evaluación parcial.');
@@ -105,8 +106,14 @@ function assertSummaryShape(summaryMarkdownText) {
     throw new Error('Expected summary to show coverage 4/6.');
   }
 
-  if (!summaryMarkdownText.includes('Consistencia del contrato')) {
-    throw new Error('Expected summary to include a contract consistency section.');
+  if (!summaryMarkdownText.includes('## Dashboard') || !summaryMarkdownText.includes('## Reporte de reglas')) {
+    throw new Error('Expected summary to include only Dashboard and Reporte de reglas sections.');
+  }
+
+  for (const section of forbiddenSections) {
+    if (summaryMarkdownText.includes(section)) {
+      throw new Error(`Expected summary not to include legacy section '${section}'.`);
+    }
   }
 
   for (const label of requiredLabels) {
