@@ -173,97 +173,41 @@ async function renderSummaryMarkdownV03(summary) {
   lines.push('## Reporte de reglas');
   lines.push('');
 
-  const groupedRules = groupRulesByStatus(summary.ruleResults);
-  for (const status of ['fail', 'warning', 'notimplemented', 'pass']) {
-    const rules = groupedRules.get(status) ?? [];
-    lines.push(`### ${formatRuleGroupHeading(status)}`);
-    lines.push('');
-    lines.push(...buildRuleGroupAlert(status, rules.length));
-    lines.push('');
-
-    if (rules.length === 0) {
-      lines.push('_Sin reglas para mostrar._');
-      lines.push('');
-      continue;
-    }
-
-    lines.push('| Regla | Dimensión | Severidad | Score | Evaluadas | Pasadas | Falladas | Hallazgos | Mensaje |');
-    lines.push('| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |');
-    for (const rule of rules) {
-      lines.push(`| \`${escapeInlineCode(rule.ruleId)}\` | ${normalizeInlineText(rule.dimension ?? 'General')} | ${normalizeInlineText(rule.severity ?? 'n/a')} | ${formatDimensionScore(rule.score)} | ${formatDimensionScore(rule.evaluated)} | ${formatDimensionScore(rule.passed)} | ${formatDimensionScore(rule.failed)} | ${formatDimensionScore(rule.findings?.length ?? 0)} | ${normalizeInlineText(getRuleMessage(rule))} |`);
-    }
-    lines.push('');
-
-    for (const rule of rules) {
-      if ((rule.findings ?? []).length === 0) {
-        continue;
-      }
-
-      lines.push('<details>');
-      lines.push(`<summary>Ver hallazgos de ${escapeInlineCode(rule.ruleId)}</summary>`);
-      lines.push('');
-      lines.push('| ID | Campo | Valor | Mensaje |');
-      lines.push('| --- | --- | --- | --- |');
-      for (const finding of rule.findings) {
-        lines.push(`| \`${truncateInline(finding.recordId ?? 'n/a', 12)}\` | ${normalizeInlineText(finding.field ?? 'n/a')} | ${normalizeInlineText(truncateInline(formatFindingValue(finding.value), 80))} | ${normalizeInlineText(finding.message ?? 'n/a')} |`);
-      }
-      lines.push('');
-      lines.push('</details>');
-      lines.push('');
-    }
+  lines.push('| Regla | Estado | Dimensión | Severidad | Score | Evaluadas | Pasadas | Falladas | Hallazgos | Mensaje |');
+  lines.push('| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |');
+  for (const rule of sortRulesForReport(summary.ruleResults)) {
+    lines.push(`| \`${escapeInlineCode(rule.ruleId)}\` | ${formatRuleState(rule.status)} | ${normalizeInlineText(rule.dimension ?? 'General')} | ${normalizeInlineText(rule.severity ?? 'n/a')} | ${formatDimensionScore(rule.score)} | ${formatDimensionScore(rule.evaluated)} | ${formatDimensionScore(rule.passed)} | ${formatDimensionScore(rule.failed)} | ${formatDimensionScore(rule.findings?.length ?? 0)} | ${normalizeInlineText(getRuleMessage(rule))}${formatRuleFindingsInline(rule)} |`);
   }
 
   return lines.join('\n').trimEnd();
 }
 
-function groupRulesByStatus(rules) {
-  return rules.reduce((groups, rule) => {
-    const status = String(rule.status ?? 'unknown').toLowerCase();
-    if (!groups.has(status)) {
-      groups.set(status, []);
+function sortRulesForReport(rules) {
+  const order = new Map([
+    ['fail', 0],
+    ['warning', 1],
+    ['notimplemented', 2],
+    ['pass', 3],
+  ]);
+
+  return [...rules].sort((left, right) => {
+    const leftOrder = order.get(String(left.status ?? '').toLowerCase()) ?? 99;
+    const rightOrder = order.get(String(right.status ?? '').toLowerCase()) ?? 99;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
     }
 
-    groups.get(status).push(rule);
-    return groups;
-  }, new Map());
+    return String(left.dimension ?? '').localeCompare(String(right.dimension ?? '')) || String(left.ruleId ?? '').localeCompare(String(right.ruleId ?? ''));
+  });
 }
 
-function formatRuleGroupHeading(status) {
+function formatRuleState(status) {
   const value = String(status ?? '').toLowerCase();
   if (value === 'fail') return 'FAIL';
   if (value === 'warning') return 'WARNING';
   if (value === 'notimplemented') return 'NOT IMPLEMENTED';
   if (value === 'pass') return 'PASS';
-  return value.toUpperCase();
-}
-
-function buildRuleGroupAlert(status, count) {
-  const value = String(status ?? '').toLowerCase();
-  if (count === 0) {
-    if (value === 'fail') return ['> [!CAUTION]', '> Sin reglas fallidas.'];
-    if (value === 'warning') return ['> [!WARNING]', '> Sin reglas con advertencia.'];
-    if (value === 'notimplemented') return ['> [!CAUTION]', '> Sin reglas no implementadas.'];
-    if (value === 'pass') return ['> [!TIP]', '> Sin reglas cumplidas.'];
-    return ['> [!NOTE]', '> Sin reglas en este estado.'];
-  }
-
-  if (value === 'fail') {
-    return ['> [!CAUTION]', `> **${count} ${count === 1 ? 'regla fallida' : 'reglas fallidas'}**`];
-  }
-
-  if (value === 'warning') {
-    return ['> [!WARNING]', `> **${count} ${count === 1 ? 'regla con advertencia' : 'reglas con advertencia'}**`];
-  }
-
-  if (value === 'notimplemented') {
-    return ['> [!CAUTION]', `> **${count} ${count === 1 ? 'regla no implementada' : 'reglas no implementadas'}**`];
-  }
-
-  if (value === 'pass') {
-    return ['> [!TIP]', `> **${count} ${count === 1 ? 'regla cumplida' : 'reglas cumplidas'}**`];
-  }
-
-  return ['> [!NOTE]', `> **${count} reglas**`];
+  return value || 'n/a';
 }
 
 function formatDimensionScore(value) {
@@ -316,6 +260,17 @@ function getRuleMessage(rule) {
   }
 
   return rule.reason ?? rule.message ?? 'n/a';
+}
+
+function formatRuleFindingsInline(rule) {
+  const findings = rule.findings ?? [];
+  if (findings.length === 0) {
+    return '';
+  }
+
+  const preview = findings.slice(0, 2).map((finding) => `${truncateInline(finding.recordId ?? 'n/a', 12)} ${truncateInline(formatFindingValue(finding.value), 40)}`);
+  const remaining = findings.length - preview.length;
+  return `<br><small>${normalizeInlineText(preview.join(' · '))}${remaining > 0 ? ` · +${remaining}` : ''}</small>`;
 }
 
 function truncateInline(value, maxLength = 40) {
