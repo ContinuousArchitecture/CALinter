@@ -18,8 +18,6 @@ if (process.env.CI !== 'true') {
   openInBrowser(htmlPath);
 }
 
-process.stdout.write(`${htmlPath}\n`);
-
 function markdownToHtml(input) {
   const lines = String(input ?? '').replace(/\r\n/g, '\n').split('\n');
   const out = [];
