@@ -30,7 +30,7 @@ export const Engine = {
           fs.writeFileSync(summaryFile, await this.renderSummary(response), 'utf8');
         }
 
-        process.stdout.write(`${response.systemStatus === 'ERROR' ? 'ERROR' : 'PASS'}\n`);
+        process.stdout.write(`${response.status ?? (response.systemStatus === 'ERROR' ? 'ERROR' : 'PASS')}\n`);
         return;
       }
 

@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "validate": "node src/engine.mjs"
+    "validate": "node src/engine.mjs",
+    "test": "node test/run-tests.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

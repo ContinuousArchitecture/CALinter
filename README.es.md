@@ -18,6 +18,10 @@ Valida repositorios desde contratos YAML en `.calinter/` y escribe reportes de c
 
 Si todavía hay reglas no soportadas, se marcan como `notImplemented` y el estado de calidad pasa a `incomplete` en vez de fingir que la ejecución está completa.
 
+## Test Local
+
+Ejecuta `npm test` para correr el engine contra el repositorio fixture incluido en `test/fixtures/sample-repo/`.
+
 ## Contratos YAML
 
 El engine lee `.calinter/archi-rules.yml` y `.calinter/archi-quality.yml`, y luego genera `reports/rule-results.json`, `reports/quality-score.json` y `reports/quickchart-radar.json`.
@@ -26,7 +30,7 @@ Las reglas aún no soportadas se marcan como `notImplemented` en vez de inventar
 
 ## Fixture De Entrada
 
-El ejemplo ArchiMate vive en `artifact/source/design.archimate` y se trata como dato de validación de solo lectura.
+El ejemplo ArchiMate vive en `test/fixtures/sample-repo/artifact/source/design.archimate` y se trata como dato de validación de solo lectura.
 
 ## Workflow
 

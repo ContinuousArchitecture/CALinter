@@ -18,6 +18,10 @@ It validates repositories from YAML contracts under `.calinter/` and writes qual
 
 If some rules are still unsupported, they are marked `notImplemented` and the quality status becomes `incomplete` instead of pretending the run is complete.
 
+## Local Test
+
+Run `npm test` to execute the engine against the bundled fixture repo under `test/fixtures/sample-repo/`.
+
 ## YAML Contracts
 
 The engine reads `.calinter/archi-rules.yml` and `.calinter/archi-quality.yml`, then writes `reports/rule-results.json`, `reports/quality-score.json`, and `reports/quickchart-radar.json`.
@@ -26,7 +30,7 @@ Unsupported rules are marked `notImplemented` instead of being invented.
 
 ## Input Fixture
 
-The sample ArchiMate input lives at `artifact/source/design.archimate` and is treated as read-only example data for validation.
+The sample ArchiMate input lives at `test/fixtures/sample-repo/artifact/source/design.archimate` and is treated as read-only example data for validation.
 
 ## Workflow
 
