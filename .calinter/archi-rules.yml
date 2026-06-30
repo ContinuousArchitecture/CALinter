@@ -71,7 +71,7 @@ rules:
       passThreshold: 95
       warningThreshold: 80
       failBelow: 80
-    failureMessage: El nombre debe ser claro, legible y comenzar con mayúscula.
+    failureMessage: El nombre se entiende mejor cuando empieza con mayúscula y mantiene un estilo consistente.
 
   vistas_vacias_regla:
     dimension: Legibilidad
@@ -88,7 +88,7 @@ rules:
       passThreshold: 100
       warningThreshold: 90
       failBelow: 90
-    failureMessage: Existen vistas vacías que no aportan valor.
+    failureMessage: Una vista vacía no ayuda a entender el modelo ni aporta contexto para revisar decisiones.
 
   referencias_rotas_regla:
     dimension: Integridad
@@ -151,7 +151,7 @@ rules:
       passThreshold: 90
       warningThreshold: 70
       failBelow: 70
-    failureMessage: La vista contiene demasiados elementos.
+    failureMessage: La vista está sobrecargada y pierde claridad; conviene simplificarla para que se lea rápido.
 
   exceso_relaciones_por_vista_regla:
     dimension: Legibilidad
@@ -168,7 +168,7 @@ rules:
       passThreshold: 90
       warningThreshold: 70
       failBelow: 70
-    failureMessage: La vista contiene demasiadas relaciones visibles.
+    failureMessage: La vista tiene demasiadas conexiones y se vuelve difícil de seguir; simplificarla mejora su utilidad.
 
   elementos_aislados_regla:
     dimension: Trazabilidad

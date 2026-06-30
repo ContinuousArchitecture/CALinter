@@ -564,7 +564,7 @@ function renderConsolidatedStatusAlert(kind, statusLabel, sectionGroups, catalog
     for (const rule of group.rules) {
       const summary = normalizeInlineText(getRuleSummaryMessage(rule, catalogIndexes));
       const action = normalizeInlineText(getRuleActionMessage(rule, catalogIndexes));
-      lines.push(`> - \`${escapeInlineCode(rule.ruleId)}\` · ${summary}`);
+      lines.push(`> - ${summary}`);
       if (kind !== 'pass') {
         lines.push(`>   - **Acción:** ${action}`);
       }
