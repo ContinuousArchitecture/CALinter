@@ -123,7 +123,6 @@ function evaluateYamlRule(ruleId, rule, catalog) {
 function evaluateCollectionRule(ruleId, rule, items, operator) {
   const field = rule.assert?.field ?? 'name';
   const values = items.map((item) => readValue(item, field));
-  const target = rule.assert?.value;
   const targets = rule.assert?.values ?? [];
 
   switch (operator) {
@@ -235,7 +234,6 @@ function buildQualityScore(qualityConfig, ruleResults) {
     let weightTotal = 0;
     let weightedScore = 0;
     let hasCriticalFailure = false;
-    let includedScores = 0;
 
     for (const ruleRef of dimension.rules ?? []) {
       const result = ruleResultsById.get(ruleRef.id);
@@ -257,7 +255,6 @@ function buildQualityScore(qualityConfig, ruleResults) {
         const weight = Number(ruleRef.weight) || 0;
         weightTotal += weight;
         weightedScore += score * weight;
-        includedScores += 1;
       }
 
       if (result.status === 'fail' && isCriticalSeverity(result.severity, qualityConfig)) {

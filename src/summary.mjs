@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { loadYamlFile } from './infra/yaml.mjs';
 
 export async function renderDesignSummary(response) {
-  validateDesignContracts(response.repoRoot ?? process.cwd());
+  validateDesignContracts();
 
   if (response.systemStatus === 'ERROR') {
     return `${renderSystemErrorSummary(response).join('\n').trimEnd()}\n`;
@@ -52,7 +52,7 @@ function countChecks(checks) {
   }, { PASS: 0, WARN: 0, FAIL: 0, ERROR: 0 });
 }
 
-function validateDesignContracts(repoRoot) {
+function validateDesignContracts() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const rulesPath = path.join(root, '.calinter', 'archi-rules.yml');
   const qualityPath = path.join(root, '.calinter', 'archi-quality.yml');
