@@ -384,7 +384,11 @@ function getRuleActionMessage(rule, catalogIndexes) {
     return 'Sin acción.';
   }
 
-  const viewsAction = getViewsRuleAction(rule, catalogIndexes);
+  if (String(rule?.ruleId ?? '').startsWith('vistas_')) {
+    return 'Revisar los detalles para ver la acción recomendada.';
+  }
+
+  const viewsAction = getViewsRuleAction(rule, 'Vista');
   if (viewsAction) {
     return viewsAction;
   }
@@ -416,24 +420,24 @@ function getViewsRuleSummary(rule, catalogIndexes) {
 
   switch (String(rule?.ruleId ?? '')) {
     case 'vistas_vacias_regla':
-      return `${viewName} no aporta contexto si queda vacía. Hoy está en ${formattedValue} elementos visibles.`;
+      return `${viewName} no contiene elementos visibles.`;
     case 'exceso_elementos_por_vista_regla':
-      return `${viewName} está demasiado cargada. Hoy tiene ${formattedValue} elementos visibles.`;
+      return `${viewName} contiene ${formattedValue} elementos visibles, por encima del umbral recomendado.`;
     case 'exceso_relaciones_por_vista_regla':
-      return `${viewName} tiene demasiadas conexiones visibles. Hoy muestra ${formattedValue} relaciones.`;
+      return `${viewName} muestra ${formattedValue} relaciones visibles, lo que incrementa el ruido visual.`;
     default:
       return '';
   }
 }
 
-function getViewsRuleAction(rule, catalogIndexes) {
+function getViewsRuleAction(rule, viewName) {
   switch (String(rule?.ruleId ?? '')) {
     case 'vistas_vacias_regla':
-      return `Sirve para evitar vistas que no explican nada y solo agregan ruido.`;
+      return `Completar ${viewName} con contenido útil o retirarla si no aporta valor.`;
     case 'exceso_elementos_por_vista_regla':
-      return `Sirve para mantener la vista clara y fácil de revisar.`;
+      return `Dividir ${viewName} en vistas más específicas por capa, dominio o propósito.`;
     case 'exceso_relaciones_por_vista_regla':
-      return `Sirve para reducir el ruido visual y hacer más fácil seguir las relaciones.`;
+      return `Reducir las relaciones visibles en ${viewName} para bajar el ruido visual.`;
     default:
       return '';
   }
@@ -448,8 +452,6 @@ function renderRuleAlert(rule, catalogIndexes) {
     `> **Dimensión:** ${normalizeInlineText(rule.dimension ?? 'General')}`,
     '>',
     `> ${normalizeInlineText(getRuleSummaryMessage(rule, catalogIndexes))}`,
-    '>',
-    `> **Acción:** ${normalizeInlineText(getRuleActionMessage(rule, catalogIndexes))}`,
   ];
 
   if (status === 'PASS') {
@@ -457,12 +459,25 @@ function renderRuleAlert(rule, catalogIndexes) {
   }
 
   const findings = Array.isArray(rule.findings) ? rule.findings : [];
+  const isViewRule = String(rule?.ruleId ?? '').startsWith('vistas_');
+
+  if (!isViewRule) {
+    lines.push('>', `> **Acción:** ${normalizeInlineText(getRuleActionMessage(rule, catalogIndexes))}`);
+  }
+
   lines.push('>', '> <details>', '> <summary>Cómo se resuelve</summary>', '>');
 
   if (findings.length === 0) {
     lines.push('> Sin hallazgos detallados.');
   } else {
     for (const finding of findings) {
+      if (isViewRule) {
+        const label = getFindingLabel(finding, catalogIndexes);
+        const message = normalizeInlineText(getViewsRuleAction(rule, label || 'Vista'));
+        lines.push(`> - ${message}`);
+        continue;
+      }
+
       const label = getFindingLabel(finding, catalogIndexes);
       const message = normalizeInlineText(finding?.message ?? 'Revisar el hallazgo reportado.');
       lines.push(`> - ${label ? `${label}: ` : ''}${message}`);
@@ -479,7 +494,13 @@ function getFindingLabel(finding, catalogIndexes) {
   }
 
   if (finding.collection === 'views') {
-    return catalogIndexes?.views?.get(finding.recordId)?.name ?? 'Vista';
+    const recordName = String(finding.recordName ?? '').trim();
+    if (recordName) {
+      return recordName;
+    }
+
+    const recordId = String(finding.recordId ?? '').trim();
+    return recordId ? truncateInline(recordId, 24) : 'Vista';
   }
 
   if (finding.collection === 'relationships') {
