@@ -569,8 +569,6 @@ async function renderSummaryMarkdownV03(summary) {
   lines.push('');
   lines.push(`<img src="${resultChart}" width="260" />`);
   lines.push('');
-  lines.push(`<strong>Resultado ${String(summary.scoreLabel).replace(/ \(parcial\)$/, '')}</strong>`);
-  lines.push('');
   lines.push('</td>');
   lines.push('<td width="33%" align="center">');
   lines.push('');
@@ -1175,6 +1173,7 @@ function buildResultChartConfig(summary) {
   const hasScore = Number.isFinite(score);
   const safeScore = hasScore ? Math.max(0, Math.min(100, score)) : 0;
   const remaining = hasScore ? Math.max(0, 100 - safeScore) : 100;
+  const title = `Resultado ${String(summary?.scoreLabel ?? 'n/a').replace(/ \(parcial\)$/, '')}`;
 
   return {
     type: 'doughnut',
@@ -1194,7 +1193,7 @@ function buildResultChartConfig(summary) {
         legend: { display: false },
         title: {
           display: true,
-          text: 'Resultado',
+          text: title,
           font: { size: 13 },
         },
       },
