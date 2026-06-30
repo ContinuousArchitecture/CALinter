@@ -506,15 +506,13 @@ function renderRulesBySection(summary) {
   const lines = [];
 
   for (const section of [...summary.treeSections, ...summary.auxSections]) {
-    lines.push(`### ${section}`);
-    lines.push('');
-
     const rules = summary.sectionRules.get(section) ?? [];
     if (rules.length === 0) {
-      lines.push('Sin reglas aplicadas.');
-      lines.push('');
       continue;
     }
+
+    lines.push(`### ${section}`);
+    lines.push('');
 
     for (const rule of rules) {
       lines.push(...renderRuleAlert(rule, summary.catalogIndexes));
