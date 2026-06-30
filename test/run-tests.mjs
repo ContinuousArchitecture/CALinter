@@ -6,13 +6,17 @@ import { spawnSync } from 'node:child_process';
 const repoRoot = process.cwd();
 const fixtureRoot = path.join(repoRoot, 'test', 'fixtures', 'sample-repo');
 const enginePath = path.join(repoRoot, 'src', 'engine.mjs');
+const markdownViewerPath = path.join(repoRoot, 'test', 'render-markdown.mjs');
 const tempSummary = path.join(os.tmpdir(), 'calinter-summary.md');
+const tempHtml = path.join(os.tmpdir(), 'calinter-summary.html');
 
 assertFixtureExists(fixtureRoot);
 runEngine(enginePath, ['--mode', 'validate', '--repo-root', fixtureRoot]);
 runEngine(enginePath, ['--mode', 'summary', '--repo-root', fixtureRoot], {
   GITHUB_STEP_SUMMARY: tempSummary,
 });
+
+renderMarkdown(markdownViewerPath, tempSummary, tempHtml);
 
 const qualityScore = readJson(path.join(repoRoot, 'reports', 'quality-score.json'));
 const quickchart = readJson(path.join(repoRoot, 'reports', 'quickchart-radar.json'));
@@ -64,6 +68,23 @@ function runEngine(engine, args, extraEnv = {}) {
   }
 
   return result;
+}
+
+function renderMarkdown(viewer, markdownPath, htmlPath) {
+  const result = spawnSync(process.execPath, [viewer, markdownPath, htmlPath], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    throw new Error([
+      `Markdown viewer failed: node ${path.relative(repoRoot, viewer)} ${path.relative(repoRoot, markdownPath)}`,
+      result.stdout?.trim(),
+      result.stderr?.trim(),
+    ].filter(Boolean).join('\n'));
+  }
+
+  process.stdout.write(result.stdout);
 }
 
 function readJson(filePath) {
