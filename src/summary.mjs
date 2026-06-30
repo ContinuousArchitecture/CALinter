@@ -1170,24 +1170,47 @@ function buildResultChartConfig(summary) {
   return {
     type: 'doughnut',
     data: {
-      labels: hasScore
-        ? [`Cumplimiento ${formatPercentValue(completionPercent)}`, `Pendiente ${formatPercentValue(pendingPercent)}`]
-        : ['Cumplimiento', 'Pendiente'],
+      labels: ['Cumplimiento', 'Pendiente'],
       datasets: [
         {
           data: [completionPercent, pendingPercent],
           backgroundColor: ['#22c55e', '#e5e7eb'],
-          borderWidth: 0,
+          borderColor: ['#22c55e', '#e5e7eb'],
+          borderWidth: 10,
         },
       ],
     },
     options: {
-      layout: { padding: 4 },
+      circumference: Math.PI,
+      rotation: Math.PI,
+      cutout: '75%',
+      layout: { padding: 40 },
       plugins: {
         legend: {
-          display: true,
-          position: 'bottom',
-          labels: { boxWidth: 10, font: { size: 10 } },
+          display: false,
+        },
+        datalabels: {
+          color: '#000000',
+          anchor: 'end',
+          align: 'end',
+          formatter: (value) => formatPercentValue(value),
+          font: {
+            size: 18,
+            weight: 'bold',
+          },
+        },
+        doughnutlabel: {
+          labels: [
+            {
+              text: 'You are at',
+              font: { size: 16 },
+            },
+            {
+              text: hasScore ? formatPercentValue(completionPercent) : 'n/a',
+              color: '#000000',
+              font: { size: 34, weight: 'bold' },
+            },
+          ],
         },
         title: {
           display: true,
@@ -1195,7 +1218,6 @@ function buildResultChartConfig(summary) {
           font: { size: 13 },
         },
       },
-      cutout: '70%',
     },
   };
 }
