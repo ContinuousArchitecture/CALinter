@@ -19,7 +19,7 @@ const quickchart = readJson(path.join(repoRoot, 'reports', 'quickchart-radar.jso
 const catalog = readJson(path.join(repoRoot, 'reports', 'catalog.json'));
 const ruleResults = readJson(path.join(repoRoot, 'reports', 'rule-results.json'));
 
-printReport(ruleResults, qualityScore, quickchart);
+printReport(catalog, ruleResults, qualityScore, quickchart);
 
 if (qualityScore.status !== 'incomplete') {
   throw new Error(`Expected quality-score.json to be incomplete, got '${qualityScore.status}'.`);
@@ -70,7 +70,7 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function printReport(ruleResults, qualityScore, quickchart) {
+function printReport(catalog, ruleResults, qualityScore, quickchart) {
   const rules = ruleResults.rules ?? [];
   const counts = rules.reduce((acc, rule) => {
     const key = String(rule.status ?? 'unknown').toLowerCase();
@@ -84,10 +84,34 @@ function printReport(ruleResults, qualityScore, quickchart) {
   console.log('CALinter local test report');
   console.log('Rules: .calinter/archi-rules.yml');
   console.log('Quality: .calinter/archi-quality.yml');
+  console.log(`Catalog source: ${catalog?.metadata?.source ?? 'unknown'}`);
+  console.log(`Catalog model: ${catalog?.metadata?.modelName ?? 'n/a'} (${catalog?.metadata?.modelId ?? 'n/a'})`);
   console.log(`Dimensions: ${(qualityScore.dimensions ?? []).map((dimension) => dimension.label).join(', ')}`);
   console.log(`Rule results: pass=${counts.pass ?? 0}, warning=${counts.warning ?? 0}, incomplete=${counts.notimplemented ?? 0}`);
+  console.log(`Overall score: ${formatValue(qualityScore.overallScore)} / status=${qualityScore.status} / partial=${qualityScore.partial ? 'yes' : 'no'}`);
   console.log(`Quality status: ${qualityScore.status} (${qualityScore.partial ? 'partial' : 'complete'})`);
   console.log(`Radar: ${quickchart.partial ? 'partial' : 'complete'} ${quickchart.omittedDimensions?.length ? `omitted=${quickchart.omittedDimensions.join(', ')}` : ''}`.trim());
+
+  console.log('');
+  console.log('Dimensions detail:');
+  for (const dimension of qualityScore.dimensions ?? []) {
+    console.log(`- ${dimension.label} [${dimension.id}] target=${formatValue(dimension.target)} score=${formatValue(dimension.score)} status=${dimension.status} weightTotal=${formatValue(dimension.weightTotal)} includedRules=${formatValue(dimension.includedRules)}`);
+    for (const rule of dimension.rules ?? []) {
+      console.log(`  - ${rule.ruleId} status=${rule.status} score=${formatValue(rule.score)} weight=${formatValue(rule.weight)} includeInQualityScore=${rule.includeInQualityScore ? 'yes' : 'no'}`);
+    }
+  }
+
+  console.log('');
+  console.log('Rule detail:');
+  for (const rule of rules) {
+    console.log(`- ${rule.ruleId} [${rule.dimension}] scope=${rule.scope} severity=${rule.severity} status=${rule.status} score=${formatValue(rule.score)} includeInQualityScore=${rule.includeInQualityScore ? 'yes' : 'no'} includeInRadar=${rule.includeInRadar ? 'yes' : 'no'} evaluated=${formatValue(rule.evaluated)} passed=${formatValue(rule.passed)} failed=${formatValue(rule.failed)} findings=${formatValue((rule.findings ?? []).length)}`);
+    if (rule.reason) {
+      console.log(`  reason=${rule.reason}`);
+    }
+    for (const finding of rule.findings ?? []) {
+      console.log(`  finding=${finding.id ?? 'n/a'} record=${finding.recordId ?? 'n/a'} message=${finding.message ?? 'n/a'}`);
+    }
+  }
 
   if (unsupported.length > 0) {
     console.log(`Not implemented: ${unsupported.join(', ')}`);
@@ -98,4 +122,12 @@ function printReport(ruleResults, qualityScore, quickchart) {
   }
 
   console.log('');
+}
+
+function formatValue(value) {
+  if (value === null || value === undefined) {
+    return 'n/a';
+  }
+
+  return String(value);
 }
