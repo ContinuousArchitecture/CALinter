@@ -394,32 +394,6 @@ function getRuleActionMessage(rule) {
   return 'Corregir el hallazgo para que la regla cumpla.';
 }
 
-function renderValidationMapSection(summary) {
-  const sections = [...summary.treeSections, ...summary.auxSections];
-  const lines = ['```text', 'ArchiMate Model'];
-
-  sections.forEach((section, index) => {
-    const branch = index === sections.length - 1 ? '└──' : '├──';
-    const padding = index === sections.length - 1 ? '    ' : '│   ';
-    const rules = summary.sectionRules.get(section) ?? [];
-
-    lines.push(`${branch} ${section}`);
-
-    if (rules.length === 0) {
-      lines.push(`${padding}└── Sin reglas aplicadas`);
-      return;
-    }
-
-    rules.forEach((rule, ruleIndex) => {
-      const ruleBranch = ruleIndex === rules.length - 1 ? '└──' : '├──';
-      lines.push(`${padding}${ruleBranch} ${getVisibleRuleStatus(rule)} · \`${escapeInlineCode(rule.ruleId)}\``);
-    });
-  });
-
-  lines.push('```');
-  return lines;
-}
-
 function renderRuleAlert(rule, catalogIndexes) {
   const status = getVisibleRuleStatus(rule);
   const kind = getVisibleAlertKind(status);
@@ -626,11 +600,6 @@ async function renderSummaryMarkdownV03(summary) {
     lines.push(...renderSystemErrorPanel('Contrato inconsistente', summary.contractIssues));
     lines.push('');
   }
-
-  lines.push('## Mapa de validación');
-  lines.push('');
-  lines.push(...renderValidationMapSection(summary));
-  lines.push('');
 
   lines.push('## Reporte de reglas');
   lines.push('');
