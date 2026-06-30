@@ -836,7 +836,6 @@ function renderIssueEntry(check, elementLabel, observationLabel) {
 
 function renderSystemErrorSummary(response) {
   return [
-    '# Calidad del diseño',
     '',
     '## Estado del sistema',
     '',

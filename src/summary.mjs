@@ -368,6 +368,15 @@ function getRuleSummaryMessage(rule, catalogIndexes) {
     return 'Cumple.';
   }
 
+  if (String(rule?.ruleId ?? '') === 'nomenclatura_regla') {
+    const finding = (rule?.findings ?? [])[0] ?? null;
+    const subject = getFindingDisplayName(finding, catalogIndexes, 'este elemento');
+    const detail = getFailureMessage(rule);
+    return detail !== 'n/a'
+      ? `La regla de Nomenclatura marca que ${subject} no cumple: ${detail}`
+      : `La regla de Nomenclatura marca que ${subject} no cumple la convención.`;
+  }
+
   const viewsSummary = getViewsRuleSummary(rule, catalogIndexes);
   if (viewsSummary) {
     return viewsSummary;
@@ -376,6 +385,27 @@ function getRuleSummaryMessage(rule, catalogIndexes) {
   return getFailureMessage(rule) !== 'n/a'
     ? getFailureMessage(rule)
     : (rule?.message ?? rule?.reason ?? 'Revisar el hallazgo reportado.');
+}
+
+function getRuleDisplayTitle(rule, catalogIndexes) {
+  if (String(rule?.ruleId ?? '').startsWith('vistas_')) {
+    const finding = (rule?.findings ?? [])[0] ?? null;
+    return getFindingDisplayName(finding, catalogIndexes, 'Vista');
+  }
+
+  const description = String(rule?.description ?? '').trim();
+  if (description) {
+    return description;
+  }
+
+  return formatRuleTitleFromId(rule?.ruleId ?? 'Regla');
+}
+
+function formatRuleTitleFromId(ruleId) {
+  return String(ruleId ?? '')
+    .replace(/_regla$/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (match) => match.toUpperCase()) || 'Regla';
 }
 
 function getRuleActionMessage(rule, catalogIndexes) {
@@ -399,11 +429,11 @@ function getRuleActionMessage(rule, catalogIndexes) {
 
   if (status === 'warning') {
     if (/may[uú]scula/i.test(String(rule?.message ?? ''))) {
-      return 'Renombrar el elemento para que inicie con mayúscula.';
+      return 'La regla de Nomenclatura pide que el nombre empiece con mayúscula.';
     }
 
     if (String(rule?.ruleId ?? '') === 'nomenclatura_regla') {
-      return 'Ajustar el nombre para que sea más claro y consistente.';
+      return 'La regla de Nomenclatura pide un nombre claro y consistente.';
     }
 
     return 'Revisar la convención y ajustar el elemento.';
@@ -446,12 +476,13 @@ function getViewsRuleAction(rule, viewName) {
 function renderRuleAlert(rule, catalogIndexes) {
   const status = getVisibleRuleStatus(rule);
   const kind = getVisibleAlertKind(status);
+  const title = getRuleDisplayTitle(rule, catalogIndexes);
+  const summary = normalizeInlineText(getRuleSummaryMessage(rule, catalogIndexes));
+  const action = normalizeInlineText(getRuleActionMessage(rule, catalogIndexes));
   const lines = [
     `> [!${kind}]`,
-    `> **${status}**`,
-    `> **Dimensión:** ${normalizeInlineText(rule.dimension ?? 'General')}`,
-    '>',
-    `> ${normalizeInlineText(getRuleSummaryMessage(rule, catalogIndexes))}`,
+    `> **${normalizeInlineText(title)}**`,
+    `> ${summary}`,
   ];
 
   if (status === 'PASS') {
@@ -459,29 +490,18 @@ function renderRuleAlert(rule, catalogIndexes) {
   }
 
   const findings = Array.isArray(rule.findings) ? rule.findings : [];
-  const isViewRule = String(rule?.ruleId ?? '').startsWith('vistas_');
-
-  if (!isViewRule) {
-    lines.push('>', `> **Acción:** ${normalizeInlineText(getRuleActionMessage(rule, catalogIndexes))}`);
-  }
 
   lines.push('>', '> <details>', '> <summary>Cómo se resuelve</summary>', '>');
 
   if (findings.length === 0) {
-    lines.push('> Sin hallazgos detallados.');
-  } else {
+    lines.push(`> ${action}`);
+  } else if (String(rule?.ruleId ?? '').startsWith('vistas_')) {
     for (const finding of findings) {
-      if (isViewRule) {
-        const label = getFindingDisplayName(finding, catalogIndexes, 'Vista');
-        const message = normalizeInlineText(getViewsRuleAction(rule, label));
-        lines.push(`> - ${message}`);
-        continue;
-      }
-
-      const label = getFindingLabel(finding, catalogIndexes);
-      const message = normalizeInlineText(finding?.message ?? 'Revisar el hallazgo reportado.');
-      lines.push(`> - ${label ? `${label}: ` : ''}${message}`);
+      const label = getFindingDisplayName(finding, catalogIndexes, 'Vista');
+      lines.push(`> - ${normalizeInlineText(getViewsRuleAction(rule, label))}`);
     }
+  } else {
+    lines.push(`> ${action}`);
   }
 
   lines.push('>', '> </details>');
@@ -641,9 +661,10 @@ function readJsonFileIfExists(filePath) {
 }
 
 async function renderSummaryMarkdownV03(summary) {
-  const lines = ['# Calidad del diseño', ''];
+  const lines = [''];
 
-  lines.push('## Dashboard');
+  lines.push('## Reporte de Cumplimiento');
+  lines.push('**ContinuousArchitecture/CALinter**');
   lines.push('');
 
   const resultChart = await createQuickChartUrl(buildResultChartConfig(summary), { width: 320, height: 240 });
@@ -1321,19 +1342,19 @@ function formatPercentValue(value) {
 }
 
 function buildCoverageChartConfig(summary) {
-  const evaluated = Number(summary?.coverage?.split('/')[0]) || 0;
-  const total = Number(summary?.coverage?.split('/')[1]) || 0;
-  const notImplemented = Math.max(0, total - evaluated);
-  const title = `Cobertura ${evaluated}/${total} dimensiones`;
+  const dimensions = Array.isArray(summary?.qualityScore?.dimensions) ? summary.qualityScore.dimensions : [];
+  const labels = dimensions.map((dimension) => dimension.label);
+  const ruleCounts = dimensions.map((dimension) => Array.isArray(dimension.rules) ? dimension.rules.length : 0);
+  const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#f97316', '#10b981', '#f59e0b'];
 
   return {
-    type: 'doughnut',
+    type: 'pie',
     data: {
-      labels: ['Evaluadas', 'No implementadas'],
+      labels,
       datasets: [
         {
-          data: [evaluated, notImplemented],
-          backgroundColor: ['#3b82f6', '#9ca3af'],
+          data: ruleCounts,
+          backgroundColor: labels.map((_, index) => colors[index % colors.length]),
           borderWidth: 0,
         },
       ],
@@ -1341,14 +1362,13 @@ function buildCoverageChartConfig(summary) {
     options: {
       layout: { padding: 4 },
       plugins: {
-        legend: { display: false },
+        legend: { display: true, position: 'bottom' },
         title: {
           display: true,
-          text: title,
+          text: 'Reglas por dimensión',
           font: { size: 13 },
         },
       },
-      cutout: '70%',
     },
   };
 }
@@ -1610,7 +1630,6 @@ function renderSystemErrorSummary(response) {
   const contractInconsistency = /Contrato inconsistente/i.test(String(response.error ?? ''));
   const ruleId = contractInconsistency ? 'contract_consistency_check' : 'system_error';
   return [
-    '# Calidad del diseño',
     '',
     '## Errores del sistema',
     '',
