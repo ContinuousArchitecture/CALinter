@@ -7,6 +7,7 @@ import { loadYamlFile } from './infra/yaml.mjs';
 import { extractXmlRootName, selectXmlNodes } from './infra/xml.mjs';
 import { validateDslData, validateManifestData } from './core/schemas.mjs';
 import { renderDesignSummary } from './summary.mjs';
+import { generateDesignReports } from './contracts.mjs';
 
 export const Engine = {
   version: '2.0.0',
@@ -19,6 +20,7 @@ export const Engine = {
 
     if (mode === 'summary') {
       try {
+        generateDesignReports(repoRoot);
         const response = this.runManifest(repoRoot, manifestPath);
         const summaryFile = process.env.GITHUB_STEP_SUMMARY;
 
@@ -45,6 +47,7 @@ export const Engine = {
     }
 
     try {
+      generateDesignReports(repoRoot);
       const response = this.runManifest(repoRoot, manifestPath);
       process.stdout.write(`${JSON.stringify(this.buildValidateResponse(response))}\n`);
     } catch (error) {

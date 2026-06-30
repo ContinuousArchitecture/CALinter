@@ -125,33 +125,37 @@ function buildExpectedQualityScore({ qualityConfig, qualityDimensions, ruleResul
       return {
         ruleId: ruleRef.id,
         weight: Number(ruleRef.weight) || 0,
-        score: Number(result.score) || 0,
+        score: result.includeInQualityScore === false || result.status === 'notImplemented' ? null : Number(result.score),
+        status: result.status,
       };
     });
 
-    const weightTotal = rules.reduce((sum, rule) => sum + rule.weight, 0);
-    const weightedScore = rules.reduce((sum, rule) => sum + (rule.score * rule.weight), 0);
-    const score = weightTotal > 0 ? Math.round(weightedScore / weightTotal) : 0;
-    const hasCriticalFailure = rules.some((rule) => (ruleResultsById.get(rule.ruleId)?.status === 'fail') && String(rulesById.get(rule.ruleId)?.severity ?? '').toLowerCase() === 'error');
+    const scoredRules = rules.filter((rule) => rule.score !== null && Number.isFinite(rule.score));
+    const weightTotal = scoredRules.reduce((sum, rule) => sum + rule.weight, 0);
+    const weightedScore = scoredRules.reduce((sum, rule) => sum + (rule.score * rule.weight), 0);
+    const score = weightTotal > 0 ? Math.round(weightedScore / weightTotal) : null;
+    const hasCriticalFailure = scoredRules.some((rule) => (ruleResultsById.get(rule.ruleId)?.status === 'fail') && String(rulesById.get(rule.ruleId)?.severity ?? '').toLowerCase() === 'error');
     const target = Number(dimension.target) || 0;
+    const status = hasCriticalFailure ? 'fail' : (score === null ? 'notImplemented' : (score >= target ? 'pass' : 'warning'));
 
     return {
       id: dimensionId,
       label: dimension.label,
       target,
       score,
-      status: hasCriticalFailure ? 'fail' : (score >= target ? 'pass' : 'warning'),
+      status,
       weightTotal,
       rules,
     };
   });
 
-  const overallScore = dimensions.length > 0
-    ? Math.round(dimensions.reduce((sum, dimension) => sum + dimension.score, 0) / dimensions.length)
-    : 0;
+  const scoredDimensions = dimensions.filter((dimension) => Number.isFinite(dimension.score));
+  const overallScore = scoredDimensions.length > 0
+    ? Math.round(scoredDimensions.reduce((sum, dimension) => sum + dimension.score, 0) / scoredDimensions.length)
+    : null;
   const status = dimensions.some((dimension) => dimension.status === 'fail')
     ? 'fail'
-    : (dimensions.every((dimension) => dimension.status === 'pass') ? 'pass' : 'warning');
+    : (dimensions.some((dimension) => dimension.status === 'warning') ? 'warning' : 'pass');
 
   return {
     overallScore,
@@ -162,7 +166,11 @@ function buildExpectedQualityScore({ qualityConfig, qualityDimensions, ruleResul
 }
 
 function assertQualityScoreMatches(actual, expected) {
-  if (Number(actual?.overallScore) !== expected.overallScore) {
+  if (expected.overallScore === null) {
+    if (actual?.overallScore !== null) {
+      throw new Error('Contrato inválido: quality-score.json no debe inventar overallScore.');
+    }
+  } else if (Number(actual?.overallScore) !== expected.overallScore) {
     throw new Error(`Contrato inválido: quality-score.json no recalcula el score global esperado (${expected.overallScore}).`);
   }
 
@@ -195,7 +203,11 @@ function assertQualityScoreMatches(actual, expected) {
       throw new Error(`Contrato inválido: quality-score.json no coincide con el target de '${expectedDimension.label}'.`);
     }
 
-    if (Number(actualDimension.score) !== expectedDimension.score) {
+    if (expectedDimension.score === null) {
+      if (actualDimension.score !== null) {
+        throw new Error(`Contrato inválido: quality-score.json debe dejar sin score a '${expectedDimension.label}'.`);
+      }
+    } else if (Number(actualDimension.score) !== expectedDimension.score) {
       throw new Error(`Contrato inválido: quality-score.json no recalcula el score de '${expectedDimension.label}'.`);
     }
 
@@ -224,8 +236,16 @@ function assertQualityScoreMatches(actual, expected) {
         throw new Error(`Contrato inválido: quality-score.json no coincide con el peso de '${expectedRule.ruleId}'.`);
       }
 
-      if (Number(actualRule.score) !== expectedRule.score) {
+      if (expectedRule.score === null) {
+        if (actualRule.score !== null) {
+          throw new Error(`Contrato inválido: quality-score.json no debe inventar score para '${expectedRule.ruleId}'.`);
+        }
+      } else if (Number(actualRule.score) !== expectedRule.score) {
         throw new Error(`Contrato inválido: quality-score.json no coincide con el score de '${expectedRule.ruleId}'.`);
+      }
+
+      if (String(actualRule.status ?? '') !== String(expectedRule.status ?? '')) {
+        throw new Error(`Contrato inválido: quality-score.json no coincide con el estado de '${expectedRule.ruleId}'.`);
       }
     }
   }

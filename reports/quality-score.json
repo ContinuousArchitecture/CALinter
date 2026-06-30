@@ -1,10 +1,9 @@
 {
   "metadata": {
-    "source": "artifact/source/design.archimate",
-    "generatedAt": "2026-06-29T16:00:00.000Z",
+    "generatedAt": "2026-06-30T00:07:51.974Z",
     "version": "0.0.3"
   },
-  "overallScore": 84,
+  "overallScore": 81,
   "status": "warning",
   "radarOrder": [
     "Estructura",
@@ -23,51 +22,76 @@
       "status": "pass",
       "weightTotal": 100,
       "rules": [
-        { "ruleId": "carpetas_obligatorias_regla", "weight": 100, "score": 100 }
+        {
+          "ruleId": "carpetas_obligatorias_regla",
+          "weight": 100,
+          "score": 100,
+          "status": "pass"
+        }
       ]
     },
     {
       "id": "nomenclatura",
       "label": "Nomenclatura",
       "target": 85,
-      "score": 82,
+      "score": 75,
       "status": "warning",
       "weightTotal": 100,
       "rules": [
-        { "ruleId": "nomenclatura_regla", "weight": 100, "score": 82 }
+        {
+          "ruleId": "nomenclatura_regla",
+          "weight": 100,
+          "score": 75,
+          "status": "warning"
+        }
       ]
     },
     {
       "id": "integridad",
       "label": "Integridad",
       "target": 95,
-      "score": 100,
-      "status": "pass",
-      "weightTotal": 100,
+      "score": null,
+      "status": "notImplemented",
+      "weightTotal": 0,
       "rules": [
-        { "ruleId": "referencias_rotas_regla", "weight": 100, "score": 100 }
+        {
+          "ruleId": "referencias_rotas_regla",
+          "weight": 100,
+          "score": null,
+          "status": "notImplemented"
+        }
       ]
     },
     {
       "id": "relaciones",
       "label": "Relaciones",
       "target": 80,
-      "score": 65,
+      "score": 50,
       "status": "warning",
       "weightTotal": 100,
       "rules": [
-        { "ruleId": "abuso_association_regla", "weight": 100, "score": 65 }
+        {
+          "ruleId": "abuso_association_regla",
+          "weight": 100,
+          "score": 50,
+          "status": "warning"
+        }
       ]
     },
     {
       "id": "trazabilidad",
       "label": "Trazabilidad",
       "target": 80,
-      "score": 58,
-      "status": "warning",
-      "weightTotal": 100,
+      "score": null,
+      "status": "notImplemented",
+      "weightTotal": 0,
       "rules": [
-        { "ruleId": "elementos_aislados_regla", "weight": 100, "score": 58 }
+        {
+          "ruleId": "elementos_aislados_regla",
+          "weight": 100,
+          "score": null,
+          "status": "notImplemented"
+        }
       ]
     },
     {
@@ -78,9 +102,24 @@
       "status": "pass",
       "weightTotal": 100,
       "rules": [
-        { "ruleId": "vistas_vacias_regla", "weight": 30, "score": 100 },
-        { "ruleId": "exceso_elementos_por_vista_regla", "weight": 35, "score": 100 },
-        { "ruleId": "exceso_relaciones_por_vista_regla", "weight": 35, "score": 100 }
+        {
+          "ruleId": "vistas_vacias_regla",
+          "weight": 30,
+          "score": 100,
+          "status": "pass"
+        },
+        {
+          "ruleId": "exceso_elementos_por_vista_regla",
+          "weight": 35,
+          "score": 100,
+          "status": "pass"
+        },
+        {
+          "ruleId": "exceso_relaciones_por_vista_regla",
+          "weight": 35,
+          "score": 100,
+          "status": "pass"
+        }
       ]
     }
   ]

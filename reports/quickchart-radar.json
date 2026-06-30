@@ -10,20 +10,34 @@
       "Legibilidad"
     ],
     "datasets": [
-        {
-          "label": "Evaluado",
-          "data": [100, 82, 100, 65, 58, 100],
-          "backgroundColor": "rgba(34, 197, 94, 0.20)",
-          "borderColor": "#22c55e",
-          "pointBackgroundColor": "#22c55e",
+      {
+        "label": "Evaluado",
+        "data": [
+          100,
+          75,
+          null,
+          50,
+          null,
+          100
+        ],
+        "backgroundColor": "rgba(34, 197, 94, 0.20)",
+        "borderColor": "#22c55e",
+        "pointBackgroundColor": "#22c55e",
         "borderWidth": 2
       },
-        {
-          "label": "Objetivo",
-          "data": [90, 85, 95, 80, 80, 80],
-          "backgroundColor": "rgba(156, 163, 175, 0.10)",
-          "borderColor": "#9ca3af",
-          "pointBackgroundColor": "#9ca3af",
+      {
+        "label": "Objetivo",
+        "data": [
+          90,
+          85,
+          95,
+          80,
+          80,
+          80
+        ],
+        "backgroundColor": "rgba(156, 163, 175, 0.10)",
+        "borderColor": "#9ca3af",
+        "pointBackgroundColor": "#9ca3af",
         "borderWidth": 2
       }
     ]
